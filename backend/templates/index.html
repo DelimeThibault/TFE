@@ -66,11 +66,7 @@
 
 <script>
   const statusEl = document.getElementById("status");
-  const cadenceEl = document.getElementById("cadence");
-  const totalPulsesEl = document.getElementById("total_pulses");
-  const createdAtEl = document.getElementById("created_at");
-  const sensorTsEl = document.getElementById("sensor_ts_ms");
-  const gatewayTsEl = document.getElementById("gateway_ts");
+  // ... autres éléments ...
 
   function setStatus(connected) {
     if (connected) {
@@ -84,33 +80,31 @@
     }
   }
 
-  // Connexion explicite sur le même host/port
-  const socket = io("http://127.0.0.1:2500", {
-    transports: ["websocket", "polling"],
+  // Fix Railway : force transports + timeout cloud
+  const socket = io({
+    transports: ['websocket', 'polling'],
+    timeout: 10000,
+    upgradeTimeout: 10000,
   });
 
   socket.on("connect", () => {
     setStatus(true);
-    console.log("SocketIO connecté");
+    console.log("✅ SocketIO connecté (transport:", socket.io.engine.transport.name, ")");
   });
 
   socket.on("connect_error", (err) => {
     setStatus(false);
-    console.error("SocketIO erreur:", err);
+    console.error("❌ SocketIO erreur:", err);
   });
 
-  socket.on("disconnect", () => {
+  socket.on("disconnect", (reason) => {
     setStatus(false);
-    console.log("SocketIO déconnecté");
+    console.log("🔌 SocketIO déconnecté (raison:", reason, ")");
   });
 
   socket.on("cadence_update", (data) => {
-    console.log("Cadence update reçu:", data);
-    cadenceEl.textContent = data.cadence ?? "--";
-    totalPulsesEl.textContent = data.total_pulses ?? "--";
-    createdAtEl.textContent = data.created_at ?? "--";
-    sensorTsEl.textContent = data.sensor_ts_ms ?? "--";
-    gatewayTsEl.textContent = data.gateway_ts ? data.gateway_ts.toFixed(3) : "--";
+    console.log("📊 Cadence update:", data);
+    // ... mise à jour UI ...
   });
 </script>
 

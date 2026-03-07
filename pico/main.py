@@ -1,3 +1,4 @@
+# type:ignore
 from machine import Pin, Timer
 import time
 
@@ -38,7 +39,7 @@ try:
             print(f"CADENCE: {rpm:4.0f} RPM | Pulses total: {len(pulse_times):4d}   ", end='\r')
             last_print = now
         
-        # JSON série (toutes les 500ms pour passerelle)
+        # JSON série (toutes les 200ms pour passerelle)
         if time.ticks_diff(now, last_json) > 200:
             rpm = calc_rpm()
             total_pulses = len(pulse_times)

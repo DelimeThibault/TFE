@@ -4,7 +4,7 @@ import requests
 import serial
 from serial.tools import list_ports
 
-API_URL = "http://127.0.0.1:2500/api/cadence"  # Étape 3 : Flask écoutera ici
+API_URL = "https://tfe-production-54d0.up.railway.app/api/cadence"  # Étape 3 : Flask écoutera ici
 
 # ---------- Détection du port Pico sur Mac ----------
 
@@ -84,14 +84,21 @@ def main():
 
             data["gateway_ts"] = time.time()
 
-            try:
-                resp = session.post(API_URL, json=data, timeout=0.5)
-                if resp.status_code != 200:
-                    print(f"⚠ Erreur HTTP {resp.status_code} → {resp.text}")
-                else:
-                    print(f"➡ POST ok : {data}")
-            except requests.RequestException as e:
-                print(f"🌐 Erreur de connexion API : {e}")
+            for attempt in range(3):
+                try:
+                    resp = session.post(API_URL, json=data, timeout=3.0)
+                    if resp.status_code != 200:
+                        print(f"⚠ Erreur HTTP {resp.status_code} → {resp.text}")
+                    else:
+                        print(f"➡ POST ok : {data}")
+                    break  # Succès → on sort
+                except requests.RequestException as e:
+                    print(f"🌐 Tentative {attempt+1}/3 échouée : {e}")
+                    if attempt == 2:
+                        print("💥 Échec définitif")
+                    else:
+                        time.sleep(0.2)  # Pause courte avant retry
+
 
 
         except KeyboardInterrupt:
