@@ -1,0 +1,8 @@
+# Passerelle Mac
+pyserial==3.5
+requests==2.32.3
+
+# Backend Flask + SocketIO (sans eventlet)
+flask==3.0.2
+flask-socketio==5.3.6
+gunicorn==21.2.0
