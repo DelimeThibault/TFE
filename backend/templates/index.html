@@ -24,8 +24,7 @@
     .small { font-size: 0.8rem; color: #777; }
   </style>
 
-  <!-- Socket.IO client (version 4) -->
-  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 
@@ -65,49 +64,69 @@
 </div>
 
 <script>
-  const statusEl = document.getElementById("status");
-  // ... autres éléments ...
+  console.log("JS chargé");
+
+  // Récupère les éléments du DOM
+  const cadenceEl = document.getElementById("cadence");
+  const totalEl = document.getElementById("total_pulses");
+  const createdEl = document.getElementById("created_at");
+  const sensorEl = document.getElementById("sensor_ts_ms");
+  const gatewayEl = document.getElementById("gateway_ts");
+
+  console.log("Éléments:", { cadenceEl, totalEl, createdEl, sensorEl, gatewayEl });
 
   function setStatus(connected) {
-    if (connected) {
-      statusEl.textContent = "Connecté";
-      statusEl.classList.remove("err");
-      statusEl.classList.add("ok");
-    } else {
-      statusEl.textContent = "Déconnecté";
-      statusEl.classList.remove("ok");
-      statusEl.classList.add("err");
+    const statusEl = document.getElementById("status");
+    if (statusEl) {
+      statusEl.textContent = connected ? "Connecté" : "Déconnecté";
+      statusEl.className = connected ? "badge ok" : "badge err";
     }
   }
 
-  // Fix Railway : force transports + timeout cloud
+  // Connexion Socket.IO vers le même host que la page
   const socket = io({
-    transports: ['websocket', 'polling'],
+    transports: ["websocket", "polling"],
     timeout: 10000,
-    upgradeTimeout: 10000,
   });
 
   socket.on("connect", () => {
+    console.log("✅ SocketIO connecté");
     setStatus(true);
-    console.log("✅ SocketIO connecté (transport:", socket.io.engine.transport.name, ")");
+  });
+
+  socket.on("disconnect", () => {
+    console.log("🔌 SocketIO déconnecté");
+    setStatus(false);
   });
 
   socket.on("connect_error", (err) => {
-    setStatus(false);
     console.error("❌ SocketIO erreur:", err);
-  });
-
-  socket.on("disconnect", (reason) => {
     setStatus(false);
-    console.log("🔌 SocketIO déconnecté (raison:", reason, ")");
   });
 
+  // Réception des mises à jour de cadence
   socket.on("cadence_update", (data) => {
     console.log("📊 Cadence update:", data);
-    // ... mise à jour UI ...
+
+    if (cadenceEl) cadenceEl.textContent = data.cadence ?? "--";
+    if (totalEl)   totalEl.textContent   = data.total_pulses ?? "--";
+    if (createdEl) createdEl.textContent = data.created_at ?? "--";
+    if (sensorEl)  sensorEl.textContent  = data.sensor_ts_ms ?? "--";
+
+    if (gatewayEl) {
+      if (data.gateway_ts != null) {
+        try {
+          const v = Number(data.gateway_ts);
+          gatewayEl.textContent = isNaN(v) ? data.gateway_ts : v.toFixed(3);
+        } catch {
+          gatewayEl.textContent = data.gateway_ts;
+        }
+      } else {
+        gatewayEl.textContent = "--";
+      }
+    }
   });
 </script>
-
 
 </body>
 </html>
