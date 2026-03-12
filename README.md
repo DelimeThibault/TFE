@@ -3,10 +3,22 @@
 ## Installation IDE
 
 ```
+python -m venv .venv
+
+# MAC 
 source .venv/bin/activate
 pip install --upgrade pip && pip install -r requirements.txt
 
-# backend Flask
+# Windows
+.venv\Scripts\activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+## Lancement de l'application
+
+```
+# backend Flask 
 cd backend
 python3 app.py
 
