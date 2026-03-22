@@ -1,0 +1,8 @@
+{
+  "session_id": "sess-001",
+  "seq": 95,
+  "ts_app_ms": 1711111111111,
+  "mode": "route",
+  "slope_pct": 3.5,
+  "ttl_ms": 1000
+}

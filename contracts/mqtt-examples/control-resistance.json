@@ -1,0 +1,9 @@
+{
+  "session_id": "sess-001",
+  "seq": 41,
+  "ts_app_ms": 1711111111222,
+  "control_mode": "simulation",
+  "target_level": 2,
+  "target_voltage": 0.8,
+  "ttl_ms": 1000
+}

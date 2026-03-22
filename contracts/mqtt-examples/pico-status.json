@@ -1,0 +1,10 @@
+{
+  "session_id": "sess-001",
+  "ts_pico_ms": 123457000,
+  "wifi": "connected",
+  "mqtt": "connected",
+  "firmware": "0.2.0",
+  "uptime_s": 417,
+  "heap_free": 102344,
+  "last_error": null
+}

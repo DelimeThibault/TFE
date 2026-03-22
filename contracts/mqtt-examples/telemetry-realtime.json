@@ -1,0 +1,11 @@
+{
+  "session_id": "sess-001",
+  "seq": 1842,
+  "ts_sensor_ms": 123456789,
+  "cadence_rpm": 82.4,
+  "speed_kmh": 26.1,
+  "resistance_v": 0.812,
+  "power_w": 167.3,
+  "energy_wh": 14.82,
+  "system_state": "running"
+}
