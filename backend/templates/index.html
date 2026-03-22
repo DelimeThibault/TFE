@@ -1,121 +1,50 @@
 <!doctype html>
 <html lang="fr">
+
 <head>
   <meta charset="utf-8">
-  <title>Compteur vélo temps réel</title>
+  <title>Vélo connecté - Temps réel local</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <style>
-    body { font-family: system-ui, sans-serif; margin: 2rem; background: #f5f5f5; }
-    h1 { margin-bottom: 0.5rem; }
-    .card {
-      background: white;
-      padding: 1.5rem;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      max-width: 420px;
-    }
-    .value { font-size: 2.8rem; font-weight: 700; }
-    .label { color: #666; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.08em; }
-    .row { display: flex; justify-content: space-between; margin-top: 0.8rem; }
-    .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.75rem; }
-    .badge.ok { background: #e6ffed; color: #137333; }
-    .badge.err { background: #ffebee; color: #b71c1c; }
-    .small { font-size: 0.8rem; color: #777; }
-  </style>
-
-  <!-- Socket.IO 4.8.1 -->
+  <link rel="stylesheet" href="/static/styles.css">
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
 </head>
+
 <body>
+  <main class="container">
+    <h1>Vélo connecté - Temps réel local</h1>
 
-<h1>🚴 Compteur vélo temps réel</h1>
-<p>Flux en direct depuis le Pico via API Flask + WebSocket.</p>
+    <section class="card">
+      <div class="row">
+        <div>
+          <div class="label">Statut</div>
+          <div id="status-badge" class="badge err">Déconnecté</div>
+        </div>
+        <div>
+          <div class="label">Session</div>
+          <div id="session-id">--</div>
+        </div>
+      </div>
 
-<div class="card">
-  <div class="row" style="align-items: baseline;">
-    <div>
-      <div class="label">Cadence actuelle</div>
-      <div class="value" id="cadence">--</div>
-    </div>
-    <span id="status" class="badge err">Déconnecté</span>
-  </div>
+      <div class="grid">
+        <div><span class="label">Cadence</span><span id="cadence">--</span></div>
+        <div><span class="label">Vitesse</span><span id="speed">--</span></div>
+        <div><span class="label">Puissance</span><span id="power">--</span></div>
+        <div><span class="label">Résistance</span><span id="resistance">--</span></div>
+        <div><span class="label">Énergie</span><span id="energy">--</span></div>
+        <div><span class="label">État</span><span id="system-state">--</span></div>
+      </div>
+    </section>
 
-  <div class="row">
-    <div>
-      <div class="label">Total pulses</div>
-      <div id="total_pulses">--</div>
-    </div>
-    <div>
-      <div class="label">Dernière mesure</div>
-      <div class="small" id="created_at">--</div>
-    </div>
-  </div>
+    <section class="card">
+      <h2>Latence</h2>
+      <div class="grid">
+        <div><span class="label">Capteur → App</span><span id="lat-app">--</span></div>
+        <div><span class="label">Bout en bout</span><span id="lat-e2e">--</span></div>
+      </div>
+    </section>
+  </main>
 
-  <div class="row">
-    <div>
-      <div class="label">Timestamp capteur (ms)</div>
-      <div class="small" id="sensor_ts_ms">--</div>
-    </div>
-    <div>
-      <div class="label">Timestamp passerelle</div>
-      <div class="small" id="gateway_ts">--</div>
-    </div>
-  </div>
-</div>
-
-<script>
-  console.log("🚀 Initialisation...");
-
-  const statusEl = document.getElementById("status");
-  const cadenceEl = document.getElementById("cadence");
-  const totalPulsesEl = document.getElementById("total_pulses");
-  const createdAtEl = document.getElementById("created_at");
-  const sensorTsEl = document.getElementById("sensor_ts_ms");
-  const gatewayTsEl = document.getElementById("gateway_ts");
-
-  function setStatus(connected) {
-    if (connected) {
-      statusEl.textContent = "Connecté";
-      statusEl.classList.remove("err");
-      statusEl.classList.add("ok");
-    } else {
-      statusEl.textContent = "Déconnecté";
-      statusEl.classList.remove("ok");
-      statusEl.classList.add("err");
-    }
-  }
-
-  // Connexion EXPLICITE vers ton domaine Railway)
-  const socket = io("https://tfe-production-54d0.up.railway.app", {
-    transports: ["polling", "websocket"],  // polling d'abord pour Railway
-    timeout: 20000,
-  });
-
-  socket.on("connect", () => {
-    setStatus(true);
-    console.log("✅ SocketIO connecté à Railway !");
-  });
-
-  socket.on("connect_error", (err) => {
-    setStatus(false);
-    console.error("❌ SocketIO erreur:", err);
-  });
-
-  socket.on("disconnect", () => {
-    setStatus(false);
-    console.log("🔌 SocketIO déconnecté");
-  });
-
-  socket.on("cadence_update", (data) => {
-    console.log("📊 Cadence update reçu:", data);
-    cadenceEl.textContent = data.cadence ?? "--";
-    totalPulsesEl.textContent = data.total_pulses ?? "--";
-    createdAtEl.textContent = data.created_at ?? "--";
-    sensorTsEl.textContent = data.sensor_ts_ms ?? "--";
-    gatewayTsEl.textContent = data.gateway_ts ? data.gateway_ts.toFixed(3) : "--";
-  });
-</script>
-
+  <script src="/static/app.js"></script>
 </body>
+
 </html>
