@@ -1,0 +1,55 @@
+{
+    "folders": [
+        {
+            "path": ".",
+            "name": "🚴 TFE Vélo Connecté"
+        }
+    ],
+    "settings": {
+
+        // ─── Python (scripts locaux : extract_fit.py, gateway...) ───────
+        "python.defaultInterpreterPath": ".venv/bin/python",
+        "python.terminal.activateEnvironment": true,
+
+        // ─── MicroPico (extension Pico 2 W dans VSCode) ─────────────────
+        "micropico.syncFolder": "pico",
+        "micropico.openOnStart": false,
+
+        // ─── Linting Python ──────────────────────────────────────────────
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": false,
+        "python.linting.flake8Enabled": true,
+        "python.linting.flake8Args": [
+            "--max-line-length=100",
+            "--ignore=E501,W503"
+        ],
+
+        // ─── Formatage automatique ───────────────────────────────────────
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "[python]": {
+            "editor.defaultFormatter": "ms-python.black-formatter"
+        },
+
+        // ─── Fichiers à exclure de l'explorateur ─────────────────────────
+        "files.exclude": {
+            "**/__pycache__": true,
+            "**/*.pyc": true,
+            ".venv": true,
+            "**/.DS_Store": true
+        },
+
+        // ─── Git ─────────────────────────────────────────────────────────
+        "git.enableSmartCommit": true,
+        "git.autofetch": true,
+
+        // ─── Editeur général ─────────────────────────────────────────────
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true,
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+
+        // ─── Terminal intégré ────────────────────────────────────────────
+        "terminal.integrated.defaultProfile.osx": "zsh"
+    },
+}

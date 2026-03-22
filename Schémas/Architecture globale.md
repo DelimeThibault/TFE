@@ -1,46 +1,24 @@
 ```mermaid
-%%{init: {
-  'theme': 'base',
-  'themeVariables': {
-    'primaryColor': '#dbeafe',
-    'primaryBorderColor': '#3b82f6',
-    'primaryTextColor': '#1e3a5f',
-    'lineColor': '#6b7280',
-    'edgeLabelBackground': '#f0f4ff',
-    'clusterBkg': '#f8faff',
-    'clusterBorder': '#94a3b8',
-    'fontFamily': 'Segoe UI, sans-serif',
-    'fontSize': '15px'
-  }
-}}%%
-graph TB
-    subgraph PicoW["🔌 Raspberry Pi Pico 2 W"]
-        SENSOR["Capteur<br/>cadence + résistance"]
-        CODE["main.py<br/>Calcul vitesse & puissance<br/>umqtt.simple · MQTT TLS"]
+flowchart LR
+subgraph Pico2W["Raspberry Pi Pico 2 W"]
+A1[IRQ reed switch]
+A2[Timers HS/LS]
+A3[ADC courant + résistance]
+A4[Calculs embarqués\ncadence, vitesse, énergie,\npuissance estimée]
+A5[Client MQTT]
+end
+
+    subgraph Pi45["Raspberry Pi 4-5"]
+        B1[Mosquitto broker]
+        B2[Service applicatif local]
+        B3[Web app locale]
     end
 
-    subgraph HiveMQ["☁️ HiveMQ Cloud Free  |  Broker MQTT managé"]
-        BROKER["Ports<br/>8883 TLS  ·  8884 WSS"]
-        TOPIC["Topic<br/>velo/session/live"]
-    end
-
-    subgraph Web["🌐 Page Web statique — GitHub Pages"]
-        HTML["📄 index.html<br/>mqtt.js via WSS"]
-        UI["📊 Dashboard live<br/>Cadence · Vitesse · Puissance"]
-    end
-
-    SENSOR -->|données brutes| CODE
-    CODE -->|"🔒 MQTT TLS — port 8883"| BROKER
-    BROKER --> TOPIC
-    TOPIC -. "🔒 WSS — port 8884" .-> HTML
-    HTML -->|mise à jour| UI
-
-    classDef hw fill:#fef3c7,stroke:#d97706,color:#78350f
-    classDef cloud fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
-    classDef web fill:#dcfce7,stroke:#16a34a,color:#14532d
-
-    class SENSOR,CODE hw
-    class BROKER,TOPIC cloud
-    class HTML,UI web
-
+    A1 --> A4
+    A2 --> A4
+    A3 --> A4
+    A4 --> A5
+    A5 <--> B1
+    B1 <--> B2
+    B2 <--> B3
 ```
