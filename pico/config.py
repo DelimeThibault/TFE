@@ -1,6 +1,6 @@
 # config.py
-WIFI_SSID     = "SSID"
-WIFI_PASSWORD = "MOT_DE_PASSE"
+WIFI_SSID     = "iPhoneThibs"
+WIFI_PASSWORD = "azertyuiop"
 
 MQTT_BROKER   = "XXXXXXXX.s1.eu.hivemq.cloud"  # À remplir après création HiveMQ
 MQTT_PORT     = 8883
