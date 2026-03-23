@@ -4,16 +4,17 @@
 
 ## Topics
 
-| Topic                          | Sens       | Description                             | Fréquence cible      | QoS |
-| ------------------------------ | ---------- | --------------------------------------- | -------------------- | --- |
-| `bike/pico/telemetry/realtime` | Pico -> Pi | Données temps réel du vélo              | 5 Hz                 | 0   |
-| `bike/pico/status`             | Pico -> Pi | État système du Pico                    | 1 Hz                 | 1   |
-| `bike/pico/debug`              | Pico -> Pi | Messages de debug                       | Événementiel         | 0   |
-| `bike/pi/control/simulation`   | Pi -> Pico | Paramètres de simulation, pente simulée | 2 à 5 Hz             | 1   |
-| `bike/pi/control/resistance`   | Pi -> Pico | Consigne de résistance                  | Événementiel ou 2 Hz | 1   |
-| `bike/pi/control/session`      | Pi -> Pico | Start, stop, pause, reset               | Événementiel         | 1   |
-| `bike/pi/system/ping`          | Pi -> Pico | Heartbeat applicatif                    | Toutes les 2 s       | 0   |
-| `bike/pico/system/pong`        | Pico -> Pi | Heartbeat retour                        | Toutes les 2 s       | 0   |
+| Topic                          | Sens       | Description                                              | Fréquence cible      | QoS |
+| ------------------------------ | ---------- | -------------------------------------------------------- | -------------------- | --- |
+| `bike/pico/telemetry/realtime` | Pico -> Pi | Données temps réel du vélo                               | 5 Hz                 | 0   |
+| `bike/pico/status`             | Pico -> Pi | État système du Pico                                     | 1 Hz                 | 1   |
+| `bike/pico/debug`              | Pico -> Pi | Messages de debug                                        | Événementiel         | 0   |
+| `bike/pi/control/simulation`   | Pi -> Pico | Paramètres de simulation, pente simulée                  | 2 à 5 Hz             | 1   |
+| `bike/pi/control/resistance`   | Pi -> Pico | Consigne de résistance                                   | Événementiel ou 2 Hz | 1   |
+| `bike/pi/control/session`      | Pi -> Pico | Start, stop, pause, reset                                | Événementiel         | 1   |
+| `bike/pi/system/ping`          | Pi -> Pico | Heartbeat applicatif                                     | Toutes les 2 s       | 0   |
+| `bike/pico/system/pong`        | Pico -> Pi | Heartbeat retour                                         | Toutes les 2 s       | 0   |
+| `bike/pi/system/timebase`      | Pi -> Pico | Référence temporelle backend pour synchronisation légère | 1 Hz                 | 0   |
 
 ## Fichiers d'exemple de payload
 

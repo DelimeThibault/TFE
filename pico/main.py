@@ -117,6 +117,9 @@ bike_r_set_point_index = 0
 bike_r_set_point = bike_r_set_points[bike_r_set_point_index]
 
 mqtt_seq = 0
+epoch_offset_ms = None
+last_timebase_seq = 0
+last_timebase_rx_ms = 0
 
 # =============================================================
 # NOUVEAUTÉ TFE : COEFFICIENTS PUISSANCE PAR POSITION AIMANT
@@ -289,7 +292,8 @@ def connect_wifi():
 # =============================================================
 def connect_mqtt():
     """
-    Connecte le Pico au broker MQTT local Mosquitto.
+    Connecte le Pico au broker MQTT local Mosquitto, configure le callback
+    de réception, puis s'abonne au topic timebase.
     """
     client_id = ubinascii.hexlify(machine.unique_id())
     client = MQTTClient(
@@ -300,12 +304,19 @@ def connect_mqtt():
         password=config.MQTT_PASSWORD if config.MQTT_PASSWORD else None,
         keepalive=60,
     )
+    client.set_callback(mqtt_callback)
     client.connect()
-    print("✅ MQTT local connecté")
+    client.subscribe(config.MQTT_TOPIC_TIMEBASE)
+    print("✅ MQTT local connecté + abonnement timebase")
     return client
 
 
 def publish_status(mqtt_client, last_error=None):
+    if last_error is None:
+        last_error_json = "null"
+    else:
+        last_error_json = '"' + str(last_error).replace('"', "'") + '"'
+
     payload = (
         f'{{"session_id":"{config.SESSION_ID}",'
         f'"ts_pico_ms":{utime.ticks_ms()},'
@@ -313,9 +324,44 @@ def publish_status(mqtt_client, last_error=None):
         f'"mqtt":"connected",'
         f'"firmware":"{config.FIRMWARE_VERSION}",'
         f'"uptime_s":{utime.ticks_ms() // 1000},'
-        f'"last_error":{("null" if last_error is None else "\"" + str(last_error) + "\"")}}}'
+        f'"last_error":{last_error_json}}}'
     )
     mqtt_client.publish(config.MQTT_TOPIC_STATUS, payload.encode(), qos=1)
+
+
+def mqtt_callback(topic, msg):
+    """
+    Callback MQTT appelée à la réception d'un message.
+    Si le message provient du topic timebase, extrait les données JSON reçues
+    et met à jour les variables globales de synchronisation temporelle.
+    """
+    global epoch_offset_ms, last_timebase_seq, last_timebase_rx_ms
+
+    try:
+        topic = topic.decode()
+        msg = msg.decode()
+    except Exception:
+        return
+
+    if topic == config.MQTT_TOPIC_TIMEBASE:
+        try:
+            import ujson as json
+        except ImportError:
+            import json
+
+        try:
+            data = json.loads(msg)
+            ts_app_ms = int(data.get("ts_app_ms", 0))
+            seq = int(data.get("seq", 0))
+            pico_now = utime.ticks_ms()
+
+            epoch_offset_ms = ts_app_ms - pico_now
+            last_timebase_seq = seq
+            last_timebase_rx_ms = pico_now
+
+            print("🕒 Timebase reçue | offset =", epoch_offset_ms)
+        except Exception as e:
+            print("❌ Erreur timebase:", e)
 
 
 # =============================================================
@@ -336,6 +382,10 @@ def main():
 
     while True:
         now = utime.ticks_ms()
+        try:
+            mqtt_client.check_msg()
+        except Exception as e:
+            print(f"❌ Réception MQTT erreur: {e}")
 
         # --- Publication télémétrie toutes les 200 ms ---
         # On ne bloque pas les interruptions : lecture simple des variables globales
@@ -346,10 +396,16 @@ def main():
 
             mqtt_seq += 1
 
+            if epoch_offset_ms is not None:
+                ts_sensor_epoch_ms = now + epoch_offset_ms
+            else:
+                ts_sensor_epoch_ms = None
+
             payload = (
                 f'{{"session_id":"{config.SESSION_ID}",'
                 f'"seq":{mqtt_seq},'
                 f'"ts_sensor_ms":{now},'
+                f'"ts_sensor_epoch_ms":{("null" if ts_sensor_epoch_ms is None else ts_sensor_epoch_ms)},'
                 f'"cadence_rpm":{cadence},'
                 f'"speed_kmh":{round(speed, 1)},'
                 f'"resistance_v":{round(pos, 3)},'
