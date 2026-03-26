@@ -66,10 +66,15 @@ brew install mosquitto
 Dans un premier terminal :
 
 ```bash
-mosquitto -v
+mosquitto -c /opt/homebrew/etc/mosquitto/mosquitto.conf -v
 ```
 
 Le broker écoute alors localement sur `localhost:1883`.
+
+Pour écouter depuis le terminal (avec l'ip de l'host du broker MQTT) : 
+```bash
+mosquitto_sub -h 172.20.10.2 -p 1883 -t "bike/#" -v
+```
 
 ## Lancement de l’application locale
 
