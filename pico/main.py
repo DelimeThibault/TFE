@@ -270,21 +270,24 @@ timer2.init(freq=F_ECH_LS, mode=Timer.PERIODIC, callback=ls_interrupt)
 # NOUVEAUTÉ TFE : CONNEXION WI-FI
 # =============================================================
 def connect_wifi():
-    """
-    Connecte le Pico 2 W au Wi-Fi défini dans config.py.
-    Tente pendant 20 secondes avant de reset.
-    """
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
-    wlan.connect(config.WIFI_SSID, config.WIFI_PASSWORD)
-    print("📶 Connexion Wi-Fi...")
-    for _ in range(20):
-        if wlan.isconnected():
-            print(f"✅ Wi-Fi OK | IP: {wlan.ifconfig()[0]}")
-            return True
-        utime.sleep(1)
-    print("❌ Wi-Fi échec")
-    return False
+
+    if not wlan.isconnected():
+        print("📶 Connexion Wi-Fi...")
+        wlan.connect(config.WIFI_SSID, config.WIFI_PASSWORD)
+
+        timeout = 20
+        while not wlan.isconnected() and timeout > 0:
+            utime.sleep(0.5)
+            timeout -= 1
+
+    if wlan.isconnected():
+        print(f"✅ Wi-Fi OK | IP: {wlan.ifconfig()[0]}")
+        return True
+    else:
+        print("❌ Wi-Fi échec")
+        return False
 
 
 # =============================================================
@@ -292,23 +295,27 @@ def connect_wifi():
 # =============================================================
 def connect_mqtt():
     """
-    Connecte le Pico au broker MQTT local Mosquitto, configure le callback
-    de réception, puis s'abonne au topic timebase.
+    Tente de se connecter au broker MQTT.
+    Réessaie indéfiniment toutes les 3 secondes jusqu'au succès.
     """
     client_id = ubinascii.hexlify(machine.unique_id())
     client = MQTTClient(
         client_id=client_id,
         server=config.MQTT_BROKER,
         port=config.MQTT_PORT,
-        user=config.MQTT_USER if config.MQTT_USER else None,
-        password=config.MQTT_PASSWORD if config.MQTT_PASSWORD else None,
+        user=config.MQTT_USER,
+        password=config.MQTT_PASSWORD,
         keepalive=60,
     )
-    client.set_callback(mqtt_callback)
-    client.connect()
-    client.subscribe(config.MQTT_TOPIC_TIMEBASE)
-    print("✅ MQTT local connecté + abonnement timebase")
-    return client
+
+    while True:
+        try:
+            client.connect()
+            print("✅ MQTT connecté au broker", config.MQTT_BROKER)
+            return client
+        except Exception as e:
+            print(f"⏳ Broker non joignable ({e}), nouvelle tentative dans 3s...")
+            utime.sleep(3)
 
 
 def publish_status(mqtt_client, last_error=None):

@@ -7,9 +7,9 @@ Ce projet de TFE porte sur la conception d’un vélo d’appartement connecté 
 L’architecture cible repose sur deux nœuds distincts :
 
 - un **Raspberry Pi Pico 2 W**, chargé du temps réel embarqué, des mesures capteurs, de certains calculs locaux et du pilotage matériel ;
-- un **Raspberry Pi 4-5**, chargé du broker MQTT local, de la logique applicative et de l’interface web.
+- un **Raspberry Pi 5**, chargé du broker MQTT local, de la logique applicative et de l’interface web.
 
-Pendant la phase de développement actuelle, la partie **Pi 4-5** est simulée localement sur **Mac**, afin de valider l’architecture, les échanges MQTT et l’affichage temps réel avant le déploiement final sur Raspberry Pi.
+Pendant la phase de développement actuelle, la partie **Pi 5** est simulée localement sur **Mac**, afin de valider l’architecture, les échanges MQTT et l’affichage temps réel avant le déploiement final sur Raspberry Pi.
 
 ## Structure du projet
 
@@ -71,7 +71,8 @@ mosquitto -c /opt/homebrew/etc/mosquitto/mosquitto.conf -v
 
 Le broker écoute alors localement sur `localhost:1883`.
 
-Pour écouter depuis le terminal (avec l'ip de l'host du broker MQTT) : 
+Pour écouter depuis le terminal (avec l'ip de l'host du broker MQTT) :
+
 ```bash
 mosquitto_sub -h 172.20.10.2 -p 1883 -t "bike/#" -v
 ```

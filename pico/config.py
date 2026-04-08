@@ -1,8 +1,9 @@
 # config.py
-WIFI_SSID = "iPhoneThibs"
-WIFI_PASSWORD = "azertyuiop"
+WIFI_MODE = "STA"
+WIFI_SSID = "VeloBike"
+WIFI_PASSWORD = "velotfe2026"
 
-MQTT_BROKER = "172.20.10.2"
+MQTT_BROKER = "192.168.4.1"
 MQTT_PORT = 1883
 MQTT_USER = ""
 MQTT_PASSWORD = ""
