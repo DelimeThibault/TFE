@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 cadence.db
 .pico-cache/
+TFE.code-workspace
+.vscode/
+.idea/

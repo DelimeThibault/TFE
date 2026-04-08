@@ -36,9 +36,9 @@ socket.on("realtime_update", (data) => {
   energyEl.textContent = data.energy_wh ?? "--";
   systemStateEl.textContent = data.system_state ?? "--";
 
-  if (data.ts_sensor_ms && data.ts_app_rx_ms) {
-    latAppEl.textContent = `${data.ts_app_rx_ms - data.ts_sensor_ms} ms`;
-    latE2EEl.textContent = `${now - data.ts_sensor_ms} ms`;
+  if (data.ts_sensor_epoch_ms && data.ts_app_rx_ms) {
+    latAppEl.textContent = `${data.ts_app_rx_ms - data.ts_sensor_epoch_ms} ms`;
+    latE2EEl.textContent = `${Date.now() - data.ts_sensor_epoch_ms} ms`;
   } else {
     latAppEl.textContent = "--";
     latE2EEl.textContent = "--";

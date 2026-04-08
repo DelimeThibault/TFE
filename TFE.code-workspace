@@ -50,6 +50,9 @@
         "files.insertFinalNewline": true,
 
         // ─── Terminal intégré ────────────────────────────────────────────
-        "terminal.integrated.defaultProfile.osx": "zsh"
+        "terminal.integrated.defaultProfile.osx": "zsh",
+        "[javascript]": {
+            "editor.defaultFormatter": "esbenp.prettier-vscode"
+        }
     },
 }

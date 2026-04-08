@@ -2,6 +2,7 @@
   "session_id": "sess-001",
   "seq": 1842,
   "ts_sensor_ms": 123456789,
+  "ts_sensor_epoch_ms": 1711353904988,
   "cadence_rpm": 82.4,
   "speed_kmh": 26.1,
   "resistance_v": 0.812,

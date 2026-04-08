@@ -1,5 +1,6 @@
 import json
 import time
+import threading
 import paho.mqtt.client as mqtt
 
 from gateway.session_store import update_realtime, update_status
@@ -8,10 +9,12 @@ MQTT_HOST = "127.0.0.1"
 MQTT_PORT = 1883
 TOPIC_REALTIME = "bike/pico/telemetry/realtime"
 TOPIC_STATUS = "bike/pico/status"
+TOPIC_TIMEBASE = "bike/pi/system/timebase"
 
 mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 
 _message_handler = None
+_timebase_seq = 0
 
 
 def set_message_handler(handler):
@@ -49,9 +52,25 @@ def on_message(client, userdata, msg):
         _message_handler(event_name, payload, state)
 
 
+def publish_timebase():
+    global _timebase_seq
+    while True:
+        try:
+            _timebase_seq += 1
+            payload = {"ts_app_ms": int(time.time() * 1000), "seq": _timebase_seq}
+            mqtt_client.publish(TOPIC_TIMEBASE, json.dumps(payload), qos=0)
+        except Exception as exc:
+            print(f"[MQTT] Erreur publication timebase: {exc}")
+        time.sleep(1)
+
+
 def start_mqtt():
     mqtt_client.on_connect = on_connect
     mqtt_client.on_message = on_message
     mqtt_client.connect(MQTT_HOST, MQTT_PORT, keepalive=60)
     mqtt_client.loop_start()
+
+    thread = threading.Thread(target=publish_timebase, daemon=True)
+    thread.start()
+
     return mqtt_client

@@ -15,7 +15,7 @@
 
 ## Calculs
 
-- `latency_sensor_to_app_ms = ts_app_rx_ms - ts_sensor_ms`
+- `latency_sensor_to_app_ms = ts_app_rx_ms - ts_sensor_epoch_ms`
 - `latency_end_to_end_ms = ts_ui_rx_ms - ts_sensor_ms`
 
 ## Seuils d’affichage
