@@ -1,4 +1,4 @@
-# Conception d’un vélo d’appartement connecté simulant la production d’énergie et l’analyse de l’effort
+# Transformation d’un vélo d’appartement en simulateur de parcours virtuels avec calcul de puissance.
 
 ## Description
 
@@ -8,8 +8,6 @@ L’architecture cible repose sur deux nœuds distincts :
 
 - un **Raspberry Pi Pico 2 W**, chargé du temps réel embarqué, des mesures capteurs, de certains calculs locaux et du pilotage matériel ;
 - un **Raspberry Pi 5**, chargé du broker MQTT local, de la logique applicative et de l’interface web.
-
-Pendant la phase de développement actuelle, la partie **Pi 5** est simulée localement sur **Mac**, afin de valider l’architecture, les échanges MQTT et l’affichage temps réel avant le déploiement final sur Raspberry Pi.
 
 ## Structure du projet
 
@@ -149,13 +147,3 @@ Les scripts et fichiers associés se trouvent dans :
 - `fichiers FIT/minimal_extract_fit.py`
 
 Cette calibration permet d’obtenir les coefficients utilisés dans le modèle de puissance embarqué.
-
-## État actuel
-
-À ce stade du projet :
-
-- l’architecture MQTT locale est définie ;
-- le backend local de test fonctionne sur Mac ;
-- Mosquitto est utilisé comme broker local ;
-- l’interface web temps réel fonctionne ;
-- la suite du travail consiste à adapter le code du Pico pour communiquer avec ce runtime local, puis à migrer l’ensemble sur Raspberry Pi 4-5.
