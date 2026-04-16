@@ -1,6 +1,6 @@
 const socket = io();
-const statusBadge = document.getElementById("status-badge");
 
+const statusBadge = document.getElementById("status-badge");
 const sessionIdEl = document.getElementById("session-id");
 const cadenceEl = document.getElementById("cadence");
 const speedEl = document.getElementById("speed");
