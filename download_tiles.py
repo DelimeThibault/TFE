@@ -1,15 +1,25 @@
 import math, os, urllib.request, time
 
+
 def deg2tile(lat, lon, zoom):
-    n = 2 ** zoom
+    n = 2**zoom
     x = int((lon + 180) / 360 * n)
-    y = int((1 - math.log(math.tan(math.radians(lat)) + 1/math.cos(math.radians(lat))) / math.pi) / 2 * n)
+    y = int(
+        (
+            1
+            - math.log(math.tan(math.radians(lat)) + 1 / math.cos(math.radians(lat)))
+            / math.pi
+        )
+        / 2
+        * n
+    )
     return x, y
 
-LAT_MIN, LAT_MAX = 50.63, 50.71
-LON_MIN, LON_MAX = 4.57, 4.67
+
+LAT_MIN, LAT_MAX = 50.60, 50.75
+LON_MIN, LON_MAX = 4.52, 4.72
 TILE_DIR = "./backend/static/tiles"
-headers = {'User-Agent': 'VeloLLN-TFE/1.0'}
+headers = {"User-Agent": "VeloLLN-TFE/1.0"}
 
 total_done = 0
 for zoom in range(13, 18):
@@ -27,10 +37,10 @@ for zoom in range(13, 18):
             try:
                 req = urllib.request.Request(url, headers=headers)
                 with urllib.request.urlopen(req, timeout=10) as r:
-                    with open(path, 'wb') as f:
+                    with open(path, "wb") as f:
                         f.write(r.read())
                 total_done += 1
-                print(f"  ✓ {zoom}/{x}/{y}", end='\r')
+                print(f"  ✓ {zoom}/{x}/{y}", end="\r")
                 time.sleep(0.1)
             except Exception as e:
                 print(f"  ✗ Erreur {zoom}/{x}/{y}: {e}")
