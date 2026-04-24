@@ -1,6 +1,7 @@
-from flask import Flask, render_template, jsonify, send_from_directory, abort
+from flask import Flask, render_template, jsonify, send_from_directory, abort, Response
 from flask_socketio import SocketIO
 import os
+import base64
 
 from gateway.mqtt_client import start_mqtt, set_message_handler
 from gateway.session_store import get_state
@@ -11,8 +12,13 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = "dev-local-secret"
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+GPX_PATH = os.path.join(BASE_DIR, "static", "lln_24h.gpx")
 
-GPX_PATH = os.path.join(os.path.dirname(__file__), "static", "lln_24h.gpx")
+# PNG transparent 1×1px pour les tuiles manquantes (évite les 404 en console)
+EMPTY_TILE = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+)
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -54,10 +60,11 @@ def api_state():
 
 @app.route("/tiles/<int:z>/<int:x>/<int:y>.png")
 def serve_tile(z, x, y):
-    tile_path = os.path.join("static", "tiles", str(z), str(x))
+    tile_path = os.path.join(BASE_DIR, "static", "tiles", str(z), str(x))
     tile_file = f"{y}.png"
-    if not os.path.exists(os.path.join(tile_path, tile_file)):
-        abort(404)
+    full_path = os.path.join(tile_path, tile_file)
+    if not os.path.exists(full_path):
+        return Response(EMPTY_TILE, mimetype="image/png")
     return send_from_directory(tile_path, tile_file, mimetype="image/png")
 
 
