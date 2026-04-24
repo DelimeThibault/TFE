@@ -320,8 +320,12 @@
     <script>
         // ── Carte Leaflet ─────────────────────────────────────────────────────────
         const map = L.map('map', { zoomControl: true }).setView([50.6685, 4.6135], 15);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap', maxZoom: 19,
+        L.Icon.Default.imagePath = '/static/images/';
+
+        L.tileLayer('/tiles/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributeurs',
+            maxZoom: 17,
+            errorTileUrl: '',
         }).addTo(map);
 
         let routePoints = [];
