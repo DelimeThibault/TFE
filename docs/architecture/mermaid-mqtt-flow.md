@@ -5,7 +5,7 @@ flowchart LR
         A["Code embarqué temps réel<br/>Capteurs, calculs, MQTT"]
     end
 
-    subgraph PI["Raspberry Pi 4-5 (cible)"]
+    subgraph PI["Raspberry Pi 5 (cible)"]
         B["Mosquitto<br/>Broker MQTT"]
         C["Service applicatif<br/>Logique métier + cache session"]
         D["Interface web<br/>Temps réel + contrôle"]

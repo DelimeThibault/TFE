@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vélo connecté — Parcours 24h LLN</title>
+    <link rel="stylesheet" href="/static/leaflet.css" />
+    <script src="/static/leaflet.js"></script>
+    <script src="/static/chart.umd.min.js"></script>
+    <script src="/static/socket.io.min.js"></script>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0f1117;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        /* ── Light mode ── */
+        [data-theme="light"] body {
+            background: #f5f5f2;
+            color: #1a1a1a;
+        }
+
+        [data-theme="light"] nav {
+            background: #ffffff;
+            border-color: #e0ddd8;
+        }
+
+        [data-theme="light"] .panel {
+            background: #ffffff;
+            border-color: #e0ddd8;
+        }
+
+        [data-theme="light"] .panel-header {
+            border-color: #e0ddd8;
+            color: #9ca3af;
+        }
+
+        [data-theme="light"] .metric-card {
+            background: #ffffff;
+            border-color: #e0ddd8;
+        }
+
+        [data-theme="light"] .metric-value {
+            color: #1a1a1a;
+        }
+
+        /* ── Nav ── */
+        nav {
+            background: #1a1d27;
+            padding: 0 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            border-bottom: 1px solid #2a2d3a;
+            height: 52px;
+        }
+
+        nav .logo {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #4f98a3;
+            letter-spacing: 0.05em;
+        }
+
+        nav a {
+            color: #9ca3af;
+            text-decoration: none;
+            font-size: 0.875rem;
+            padding: 0.25rem 0;
+            border-bottom: 2px solid transparent;
+            transition: color 180ms, border-color 180ms;
+        }
+
+        nav a:hover {
+            color: #e0e0e0;
+        }
+
+        nav a.active {
+            color: #4f98a3;
+            border-bottom-color: #4f98a3;
+        }
+
+        .conn-area {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        #conn-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #dd6974;
+            display: inline-block;
+            transition: background 300ms;
+        }
+
+        #conn-dot.connected {
+            background: #6daa45;
+        }
+
+        .theme-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #6b7280;
+            padding: 0.25rem;
+            display: flex;
+            align-items: center;
+            transition: color 180ms;
+        }
+
+        .theme-btn:hover {
+            color: #e0e0e0;
+        }
+
+        /* ── Layout ── */
+        .main {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr auto;
+            gap: 1rem;
+            padding: 1rem;
+            height: calc(100vh - 52px);
+        }
+
+        .panel {
+            background: #1a1d27;
+            border-radius: 0.75rem;
+            border: 1px solid #2a2d3a;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #2a2d3a;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-header .badge {
+            background: #4f98a3;
+            color: #0f1117;
+            font-size: 0.65rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 999px;
+            font-weight: 700;
+        }
+
+        #map {
+            flex: 1;
+            min-height: 0;
+        }
+
+        .chart-wrap {
+            flex: 1;
+            padding: 0.75rem;
+            min-height: 0;
+            position: relative;
+        }
+
+        /* ── Métriques ── */
+        .metrics {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.75rem;
+        }
+
+        .metric-card {
+            background: #1a1d27;
+            border: 1px solid #2a2d3a;
+            border-radius: 0.75rem;
+            padding: 0.875rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .metric-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7280;
+        }
+
+        .metric-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #e0e0e0;
+            font-variant-numeric: tabular-nums;
+            line-height: 1.1;
+        }
+
+        .metric-unit {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .metric-card.highlight .metric-value {
+            color: #4f98a3;
+        }
+
+        .metric-card.warn .metric-value {
+            color: #fdab43;
+        }
+
+        .metric-card.danger .metric-value {
+            color: #dd6974;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 900px) {
+            .main {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .metrics {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav>
+        <span class="logo">🚴 Vélo LLN</span>
+        <a href="/">Dashboard</a>
+        <a href="/parcours" class="active">Parcours 24h</a>
+        <div class="conn-area">
+            <span id="conn-dot"></span>
+            <span id="conn-label">Déconnecté</span>
+            <button class="theme-btn" data-theme-toggle aria-label="Basculer le thème">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+            </button>
+        </div>
+    </nav>
+
+    <div class="main">
+
+        <!-- Carte -->
+        <div class="panel">
+            <div class="panel-header">
+                Carte — Position en temps réel
+                <span class="badge" id="dist-badge">0.00 km</span>
+            </div>
+            <div id="map"></div>
+        </div>
+
+        <!-- Profil altimétrique -->
+        <div class="panel">
+            <div class="panel-header">
+                Profil altimétrique
+                <span style="color:#e0e0e0; font-size:0.8rem;">
+                    Alt : <span id="ele-display">— m</span>
+                </span>
+            </div>
+            <div class="chart-wrap">
+                <canvas id="elevChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Métriques -->
+        <div class="metrics">
+            <div class="metric-card highlight">
+                <span class="metric-label">Vitesse</span>
+                <span class="metric-value" id="m-speed">0.0</span>
+                <span class="metric-unit">km/h</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Cadence</span>
+                <span class="metric-value" id="m-cadence">0</span>
+                <span class="metric-unit">RPM</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Puissance</span>
+                <span class="metric-value" id="m-power">0</span>
+                <span class="metric-unit">W</span>
+            </div>
+            <div class="metric-card" id="slope-card">
+                <span class="metric-label">Pente</span>
+                <span class="metric-value" id="m-slope">0.0</span>
+                <span class="metric-unit">%</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Distance</span>
+                <span class="metric-value" id="m-dist">0.00</span>
+                <span class="metric-unit">km</span>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ── Carte Leaflet ─────────────────────────────────────────────────────────
+        const map = L.map('map', { zoomControl: true }).setView([50.6685, 4.6135], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap', maxZoom: 19,
+        }).addTo(map);
+
+        let routePoints = [];
+        let totalDist = 4009.73;
+        let posMarker = null;
+
+        const riderIcon = L.divIcon({
+            html: `<div style="width:16px;height:16px;background:#4f98a3;border:3px solid #fff;border-radius:50%;box-shadow:0 0 8px rgba(79,152,163,0.8);"></div>`,
+            className: '',
+            iconAnchor: [8, 8],
+        });
+
+        // ── Profil altimétrique ───────────────────────────────────────────────────
+        const ctx = document.getElementById('elevChart').getContext('2d');
+        const elevChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'Altitude (m)',
+                        data: [],
+                        borderColor: '#4f98a3',
+                        backgroundColor: 'rgba(79,152,163,0.15)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: true,
+                        tension: 0.3,
+                    },
+                    {
+                        label: 'Position',
+                        data: [],
+                        borderColor: '#fdab43',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: {
+                        ticks: {
+                            color: '#6b7280',
+                            maxTicksLimit: 8,
+                            callback: (v, i) => routePoints[i] ? (routePoints[i].dist_m / 1000).toFixed(1) + ' km' : '',
+                        },
+                        grid: { color: '#2a2d3a' }
+                    },
+                    y: {
+                        ticks: { color: '#6b7280' },
+                        grid: { color: '#2a2d3a' },
+                        title: { display: true, text: 'Altitude (m)', color: '#6b7280', font: { size: 11 } }
+                    }
+                }
+            }
+        });
+
+        // ── Chargement GPX ────────────────────────────────────────────────────────
+        fetch('/api/parcours/lln')
+            .then(r => r.json())
+            .then(data => {
+                routePoints = data.points;
+                totalDist = data.total_dist;
+
+                const latlngs = routePoints.map(p => [p.lat, p.lon]);
+                const poly = L.polyline(latlngs, { color: '#4f98a3', weight: 4, opacity: 0.85 }).addTo(map);
+                map.fitBounds(poly.getBounds(), { padding: [20, 20] });
+
+                L.circleMarker(latlngs[0], {
+                    radius: 7, color: '#6daa45', fillColor: '#6daa45', fillOpacity: 1, weight: 2
+                }).bindTooltip('Départ / Arrivée').addTo(map);
+
+                posMarker = L.marker(latlngs[0], { icon: riderIcon }).addTo(map);
+
+                elevChart.data.labels = routePoints.map((_, i) => i);
+                elevChart.data.datasets[0].data = routePoints.map(p => p.ele);
+                elevChart.update('none');
+            })
+            .catch(e => console.error('Erreur chargement GPX:', e));
+
+        // ── Mise à jour position ──────────────────────────────────────────────────
+        function updatePosition(dist_m, lat, lon, ele) {
+            if (posMarker) posMarker.setLatLng([lat, lon]);
+
+            document.getElementById('dist-badge').textContent =
+                (dist_m / 1000).toFixed(2) + ' km / ' + (totalDist / 1000).toFixed(2) + ' km';
+            document.getElementById('ele-display').textContent = ele + ' m';
+
+            if (routePoints.length === 0) return;
+            const idx = routePoints.findIndex(p => p.dist_m >= dist_m % totalDist);
+            const posIdx = idx === -1 ? routePoints.length - 1 : idx;
+            const eleMax = Math.max(...routePoints.map(p => p.ele)) + 2;
+
+            elevChart.data.datasets[1].data = routePoints.map((_, i) => i === posIdx ? eleMax : null);
+            elevChart.update('none');
+        }
+
+        // ── Socket.IO ─────────────────────────────────────────────────────────────
+        const socket = io();
+
+        socket.on('connect', () => {
+            document.getElementById('conn-dot').classList.add('connected');
+            document.getElementById('conn-label').textContent = 'Connecté';
+        });
+        socket.on('disconnect', () => {
+            document.getElementById('conn-dot').classList.remove('connected');
+            document.getElementById('conn-label').textContent = 'Déconnecté';
+        });
+
+        socket.on('realtime_update', data => {
+            document.getElementById('m-speed').textContent = (data.speed_kmh ?? 0).toFixed(1);
+            document.getElementById('m-cadence').textContent = Math.round(data.cadence_rpm ?? 0);
+            document.getElementById('m-power').textContent = Math.round(data.power_w ?? 0);
+            document.getElementById('m-dist').textContent = ((data.distance_sim_m ?? 0) / 1000).toFixed(2);
+            const slope = data.slope_pct ?? 0;
+            document.getElementById('m-slope').textContent = slope.toFixed(1);
+            document.getElementById('slope-card').className =
+                'metric-card' + (slope > 4 ? ' danger' : slope > 1.5 ? ' warn' : ' highlight');
+            if (data.current_lat && data.current_lon) {
+                updatePosition(data.distance_sim_m ?? 0, data.current_lat, data.current_lon, data.current_ele ?? 0);
+            }
+        });
+
+        socket.on('session_snapshot', state => {
+            const r = state.last_realtime;
+            if (r) {
+                document.getElementById('m-speed').textContent = (r.speed_kmh ?? 0).toFixed(1);
+                document.getElementById('m-cadence').textContent = Math.round(r.cadence_rpm ?? 0);
+                document.getElementById('m-power').textContent = Math.round(r.power_w ?? 0);
+            }
+            document.getElementById('m-dist').textContent = ((state.distance_sim_m ?? 0) / 1000).toFixed(2);
+            document.getElementById('m-slope').textContent = (state.slope_pct ?? 0).toFixed(1);
+            if (state.current_lat && state.current_lon) {
+                updatePosition(state.distance_sim_m ?? 0, state.current_lat, state.current_lon, state.current_ele ?? 0);
+            }
+        });
+
+        // ── Chargement initial ────────────────────────────────────────────────────
+        fetch('/api/state')
+            .then(r => r.json())
+            .then(state => {
+                const r = state.last_realtime;
+                if (r) {
+                    document.getElementById('m-speed').textContent = (r.speed_kmh ?? 0).toFixed(1);
+                    document.getElementById('m-cadence').textContent = Math.round(r.cadence_rpm ?? 0);
+                    document.getElementById('m-power').textContent = Math.round(r.power_w ?? 0);
+                }
+                document.getElementById('m-dist').textContent = ((state.distance_sim_m ?? 0) / 1000).toFixed(2);
+                document.getElementById('m-slope').textContent = (state.slope_pct ?? 0).toFixed(1);
+            });
+
+        // ── Theme toggle ──────────────────────────────────────────────────────────
+        (function () {
+            const btn = document.querySelector('[data-theme-toggle]');
+            const html = document.documentElement;
+            let dark = true;
+
+            const moonSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+            const sunSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
+
+            btn.addEventListener('click', () => {
+                dark = !dark;
+                html.setAttribute('data-theme', dark ? 'dark' : 'light');
+                btn.innerHTML = dark ? moonSVG : sunSVG;
+            });
+        })();
+    </script>
+
+</body>
+
+</html>

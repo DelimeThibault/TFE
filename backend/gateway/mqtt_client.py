@@ -10,6 +10,7 @@ MQTT_PORT = 1883
 TOPIC_REALTIME = "bike/pico/telemetry/realtime"
 TOPIC_STATUS = "bike/pico/status"
 TOPIC_TIMEBASE = "bike/pi/system/timebase"
+TOPIC_SLOPE = "bike/pi/control/slope"
 
 mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 
@@ -62,6 +63,14 @@ def publish_timebase():
         except Exception as exc:
             print(f"[MQTT] Erreur publication timebase: {exc}")
         time.sleep(1)
+
+
+def publish_slope(slope_pct: float) -> None:
+    """Publie la pente courante vers le Pico."""
+    try:
+        mqtt_client.publish(TOPIC_SLOPE, json.dumps({"slope_pct": slope_pct}), qos=0)
+    except Exception as exc:
+        print(f"[MQTT] Erreur publication slope: {exc}")
 
 
 def start_mqtt():

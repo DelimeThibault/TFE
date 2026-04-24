@@ -1,50 +1,488 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
 
 <head>
-  <meta charset="utf-8">
-  <title>Vélo connecté - Temps réel local</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="/static/styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vélo connecté — Dashboard</title>
   <script src="/static/socket.io.min.js"></script>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f1117;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+
+    /* ── Light mode ── */
+    [data-theme="light"] body {
+      background: #f5f5f2;
+      color: #1a1a1a;
+    }
+
+    [data-theme="light"] nav {
+      background: #ffffff;
+      border-color: #e0ddd8;
+    }
+
+    [data-theme="light"] .panel {
+      background: #ffffff;
+      border-color: #e0ddd8;
+    }
+
+    [data-theme="light"] .panel-header {
+      border-color: #e0ddd8;
+      color: #9ca3af;
+    }
+
+    [data-theme="light"] .metric-cell {
+      border-color: #e0ddd8;
+    }
+
+    [data-theme="light"] .metric-value {
+      color: #1a1a1a;
+    }
+
+    [data-theme="light"] .latency-cell {
+      border-color: #e0ddd8;
+    }
+
+    [data-theme="light"] .parcours-btn {
+      background: linear-gradient(135deg, #ffffff 0%, #f0f4f8 100%);
+      border-color: #e0ddd8;
+      color: #1a1a1a;
+    }
+
+    [data-theme="light"] #session-id,
+    [data-theme="light"] #system-state {
+      color: #1a1a1a;
+    }
+
+    /* ── Nav ── */
+    nav {
+      background: #1a1d27;
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      border-bottom: 1px solid #2a2d3a;
+      height: 52px;
+    }
+
+    nav .logo {
+      font-weight: 700;
+      font-size: 1rem;
+      color: #4f98a3;
+      letter-spacing: 0.05em;
+    }
+
+    nav a {
+      color: #9ca3af;
+      text-decoration: none;
+      font-size: 0.875rem;
+      padding: 0.25rem 0;
+      border-bottom: 2px solid transparent;
+      transition: color 180ms, border-color 180ms;
+    }
+
+    nav a:hover {
+      color: #e0e0e0;
+    }
+
+    nav a.active {
+      color: #4f98a3;
+      border-bottom-color: #4f98a3;
+    }
+
+    .conn-area {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
+
+    #conn-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #dd6974;
+      transition: background 300ms;
+    }
+
+    #conn-dot.connected {
+      background: #6daa45;
+    }
+
+    .theme-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #6b7280;
+      padding: 0.25rem;
+      margin-left: 0.25rem;
+      display: flex;
+      align-items: center;
+      transition: color 180ms;
+    }
+
+    .theme-btn:hover {
+      color: #e0e0e0;
+    }
+
+    /* ── Layout ── */
+    .main {
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .panel {
+      background: #1a1d27;
+      border-radius: 0.75rem;
+      border: 1px solid #2a2d3a;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #2a2d3a;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6b7280;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* ── Métriques ── */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .metric-cell {
+      padding: 1.25rem 1.5rem;
+      border-right: 1px solid #2a2d3a;
+      border-bottom: 1px solid #2a2d3a;
+    }
+
+    .metric-cell:nth-child(3n) {
+      border-right: none;
+    }
+
+    .metric-cell:nth-last-child(-n+3) {
+      border-bottom: none;
+    }
+
+    .metric-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6b7280;
+      margin-bottom: 0.35rem;
+    }
+
+    .metric-value {
+      font-size: 2rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      color: #e0e0e0;
+    }
+
+    .metric-unit {
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin-top: 0.2rem;
+    }
+
+    .metric-cell.highlight .metric-value {
+      color: #4f98a3;
+    }
+
+    /* ── Session ── */
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      padding: 0.875rem 1.5rem;
+    }
+
+    .status-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .badge.ok {
+      background: rgba(109, 170, 69, 0.15);
+      color: #6daa45;
+    }
+
+    .badge.err {
+      background: rgba(221, 105, 116, 0.15);
+      color: #dd6974;
+    }
+
+    /* ── Latence ── */
+    .latency-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .latency-cell {
+      padding: 1rem 1.5rem;
+      border-right: 1px solid #2a2d3a;
+    }
+
+    .latency-cell:last-child {
+      border-right: none;
+    }
+
+    /* ── Bouton parcours ── */
+    .parcours-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      background: linear-gradient(135deg, #1a1d27 0%, #1e2535 100%);
+      border: 1px solid #2a2d3a;
+      border-radius: 0.75rem;
+      text-decoration: none;
+      color: #e0e0e0;
+      transition: border-color 180ms, background 180ms;
+    }
+
+    .parcours-btn:hover {
+      border-color: #4f98a3;
+      background: linear-gradient(135deg, #1a1d27 0%, #1f2d30 100%);
+    }
+
+    .parcours-btn .btn-left {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .parcours-btn .btn-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #4f98a3;
+    }
+
+    .parcours-btn .btn-sub {
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
+
+    .parcours-btn .btn-arrow {
+      font-size: 1.25rem;
+      color: #4f98a3;
+      opacity: 0.7;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .metric-cell:nth-child(3n) {
+        border-right: 1px solid #2a2d3a;
+      }
+
+      .metric-cell:nth-child(2n) {
+        border-right: none;
+      }
+    }
+  </style>
 </head>
 
 <body>
-  <main class="container">
-    <h1>Vélo connecté - Temps réel local</h1>
 
-    <section class="card">
-      <div class="row">
-        <div>
-          <div class="label">Statut</div>
-          <div id="status-badge" class="badge err">Déconnecté</div>
+  <nav>
+    <span class="logo">🚴 Vélo LLN</span>
+    <a href="/" class="active">Dashboard</a>
+    <a href="/parcours">Parcours 24h</a>
+    <div class="conn-area">
+      <span id="conn-dot"></span>
+      <span id="conn-label">Déconnecté</span>
+      <button class="theme-btn" data-theme-toggle aria-label="Basculer le thème">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      </button>
+    </div>
+  </nav>
+
+  <div class="main">
+
+    <!-- Session -->
+    <div class="panel">
+      <div class="panel-header">Session</div>
+      <div class="status-row">
+        <div class="status-item">
+          <span class="metric-label">Statut</span>
+          <span id="status-badge" class="badge err">Déconnecté</span>
         </div>
-        <div>
-          <div class="label">Session</div>
-          <div id="session-id">--</div>
+        <div class="status-item">
+          <span class="metric-label">Session ID</span>
+          <span id="session-id" style="font-size:0.85rem; font-variant-numeric:tabular-nums;">--</span>
+        </div>
+        <div class="status-item">
+          <span class="metric-label">État système</span>
+          <span id="system-state" style="font-size:0.85rem;">--</span>
         </div>
       </div>
+    </div>
 
-      <div class="grid">
-        <div><span class="label">Cadence</span><span id="cadence">--</span></div>
-        <div><span class="label">Vitesse</span><span id="speed">--</span></div>
-        <div><span class="label">Puissance</span><span id="power">--</span></div>
-        <div><span class="label">Résistance</span><span id="resistance">--</span></div>
-        <div><span class="label">Énergie</span><span id="energy">--</span></div>
-        <div><span class="label">État</span><span id="system-state">--</span></div>
+    <!-- Métriques -->
+    <div class="panel">
+      <div class="panel-header">Métriques temps réel</div>
+      <div class="metrics-grid">
+        <div class="metric-cell highlight">
+          <div class="metric-label">Cadence</div>
+          <div class="metric-value" id="cadence">--</div>
+          <div class="metric-unit">RPM</div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-label">Vitesse</div>
+          <div class="metric-value" id="speed">--</div>
+          <div class="metric-unit">km/h</div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-label">Puissance</div>
+          <div class="metric-value" id="power">--</div>
+          <div class="metric-unit">W</div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-label">Résistance</div>
+          <div class="metric-value" id="resistance">--</div>
+          <div class="metric-unit">V</div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-label">Énergie</div>
+          <div class="metric-value" id="energy">--</div>
+          <div class="metric-unit">Wh</div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-label">Pente sim</div>
+          <div class="metric-value" id="slope">--</div>
+          <div class="metric-unit">%</div>
+        </div>
       </div>
-    </section>
+    </div>
 
-    <section class="card">
-      <h2>Latence</h2>
-      <div class="grid">
-        <div><span class="label">Capteur → App</span><span id="lat-app">--</span></div>
-        <div><span class="label">Bout en bout</span><span id="lat-e2e">--</span></div>
+    <!-- Latence -->
+    <div class="panel">
+      <div class="panel-header">Latence</div>
+      <div class="latency-grid">
+        <div class="latency-cell">
+          <div class="metric-label">Capteur → App</div>
+          <div class="metric-value" style="font-size:1.4rem;" id="lat-app">--</div>
+          <div class="metric-unit">ms</div>
+        </div>
+        <div class="latency-cell">
+          <div class="metric-label">Bout en bout</div>
+          <div class="metric-value" style="font-size:1.4rem;" id="lat-e2e">--</div>
+          <div class="metric-unit">ms</div>
+        </div>
       </div>
-    </section>
-  </main>
+    </div>
 
-  <script src="/static/app.js"></script>
+    <!-- Bouton parcours -->
+    <a href="/parcours" class="parcours-btn">
+      <div class="btn-left">
+        <span class="btn-title">🗺️ Parcours 24h Vélo de LLN</span>
+        <span class="btn-sub">Carte en temps réel · Profil altimétrique · Position courante</span>
+      </div>
+      <span class="btn-arrow">→</span>
+    </a>
+
+  </div>
+
+  <script>
+    const socket = io();
+
+    socket.on('connect', () => {
+      document.getElementById('conn-dot').classList.add('connected');
+      document.getElementById('conn-label').textContent = 'Connecté';
+      document.getElementById('status-badge').textContent = 'Connecté';
+      document.getElementById('status-badge').className = 'badge ok';
+    });
+
+    socket.on('disconnect', () => {
+      document.getElementById('conn-dot').classList.remove('connected');
+      document.getElementById('conn-label').textContent = 'Déconnecté';
+      document.getElementById('status-badge').textContent = 'Déconnecté';
+      document.getElementById('status-badge').className = 'badge err';
+    });
+
+    socket.on('realtime_update', data => {
+      document.getElementById('cadence').textContent = data.cadence_rpm != null ? Math.round(data.cadence_rpm) : '--';
+      document.getElementById('speed').textContent = data.speed_kmh != null ? data.speed_kmh.toFixed(1) : '--';
+      document.getElementById('power').textContent = data.power_w != null ? Math.round(data.power_w) : '--';
+      document.getElementById('resistance').textContent = data.resistance_v != null ? data.resistance_v.toFixed(2) : '--';
+      document.getElementById('energy').textContent = data.energy_wh != null ? data.energy_wh.toFixed(2) : '--';
+      document.getElementById('session-id').textContent = data.session_id ?? '--';
+      if (data.ts_pico_ms && data.ts_app_rx_ms) {
+        document.getElementById('lat-app').textContent = (data.ts_app_rx_ms - data.ts_pico_ms) + ' ms';
+      }
+    });
+
+    socket.on('session_snapshot', state => {
+      const s = state.last_status;
+      if (s) document.getElementById('system-state').textContent = s.state ?? '--';
+      if (state.slope_pct != null) {
+        document.getElementById('slope').textContent = state.slope_pct.toFixed(1);
+      }
+      if (state.last_realtime?.ts_pico_ms && state.last_realtime?.ts_app_rx_ms) {
+        document.getElementById('lat-app').textContent =
+          (state.last_realtime.ts_app_rx_ms - state.last_realtime.ts_pico_ms) + ' ms';
+      }
+    });
+
+    // ── Theme toggle ──────────────────────────────────────────────────────────
+    (function () {
+      const btn = document.querySelector('[data-theme-toggle]');
+      const html = document.documentElement;
+      let dark = true;
+
+      const moonSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+      const sunSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
+
+      btn.addEventListener('click', () => {
+        dark = !dark;
+        html.setAttribute('data-theme', dark ? 'dark' : 'light');
+        btn.innerHTML = dark ? moonSVG : sunSVG;
+      });
+    })();
+  </script>
+
 </body>
 
 </html>
