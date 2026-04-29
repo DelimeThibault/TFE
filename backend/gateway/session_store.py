@@ -23,12 +23,11 @@ def update_realtime(payload: dict) -> dict:
         state["last_realtime"] = payload
         state["last_update_ns"] = time_ns()
 
-        # La vitesse simulée vient du Pico (intègre pente + braquet + puissance)
+        # Pico publie toutes les 200ms → dt = 0.2s
         speed_sim_kmh = payload.get("speed_sim_kmh", 0.0) or 0.0
         speed_sim_ms = speed_sim_kmh / 3.6
-        state["distance_sim_m"] += speed_sim_ms * 1.0  # Pico publie ~1/s
+        state["distance_sim_m"] += speed_sim_ms * 0.2  # ← était 1.0, corrigé
 
-        state["total_dist_m"] = state.get("total_dist_m", 4009.73)
         return dict(state)
 
 
@@ -46,7 +45,6 @@ def get_state() -> dict:
 
 
 def update_slope(slope_pct: float, lat: float, lon: float, ele: float) -> None:
-    """Appelé par SlopeController pour mettre à jour position/pente."""
     with lock:
         state["slope_pct"] = slope_pct
         state["current_lat"] = lat
@@ -55,7 +53,6 @@ def update_slope(slope_pct: float, lat: float, lon: float, ele: float) -> None:
 
 
 def reset_distance() -> None:
-    """Remet la distance simulée à zéro."""
     with lock:
         state["distance_sim_m"] = 0.0
         state["current_lat"] = 50.66609

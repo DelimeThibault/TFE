@@ -588,9 +588,7 @@ try:
             lcd.move_to(0, 1)
             mode_str = "W" if mqtt_active else "S"
             lcd.putstr(
-                "g:{:1.1f} {:4.1f}km/h {}".format(gear_setpoint, speed_sim, mode_str)[
-                    :16
-                ]
+                "g:{:1.1f}>{:1.1f} {}".format(gear_setpoint, set_point, mode_str)[:16]
             )
             last_display_upd = now
 

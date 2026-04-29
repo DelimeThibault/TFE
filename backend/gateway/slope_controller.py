@@ -76,38 +76,34 @@ class SlopeController:
 
     PUBLISH_INTERVAL = 0.5  # secondes
 
-    def __init__(self, gpx_path):
+    def __init__(self, gpx_path, emit_callback=None):
         self.points = load_gpx(gpx_path)
         self.total_dist = self.points[-1]["dist_m"]
-        self._running = False  # thread de calcul de pente actif
-        self.parcours_actif = False  # parcours démarré par l'utilisateur
+        self._running = False
+        self.parcours_actif = False
+        # Callback facultatif → appelé à chaque cycle pour émettre via Socket.IO
+        self._emit = emit_callback or (lambda *a: None)
         print(
-            f"[SlopeController] {len(self.points)} points, "
-            f"{self.total_dist/1000:.2f} km"
+            f"[SlopeController] {len(self.points)} points, {self.total_dist/1000:.2f} km"
         )
 
     def start(self):
-        """Démarre le thread de calcul de pente (au boot de l'app)."""
         self._running = True
         threading.Thread(target=self._loop, daemon=True).start()
         print("[SlopeController] Thread démarré")
 
     def stop(self):
-        """Arrête le thread (arrêt de l'app)."""
         self._running = False
 
     def start_parcours(self):
-        """Démarre le parcours — la position commence à avancer."""
         self.parcours_actif = True
         print("[SlopeController] Parcours démarré")
 
     def stop_parcours(self):
-        """Met le parcours en pause — la position ne progresse plus."""
         self.parcours_actif = False
         print("[SlopeController] Parcours arrêté")
 
     def reset_parcours(self):
-        """Remet la distance simulée à zéro."""
         from gateway.session_store import reset_distance
 
         reset_distance()
@@ -128,11 +124,17 @@ class SlopeController:
     def _loop(self):
         while self._running:
             try:
+                dist_m = get_state().get("distance_sim_m", 0.0)
+                slope, lat, lon, ele = get_slope_at_distance(self.points, dist_m)
+
                 if self.parcours_actif:
-                    dist_m = get_state().get("distance_sim_m", 0.0)
-                    slope, lat, lon, ele = get_slope_at_distance(self.points, dist_m)
                     update_slope(slope, lat, lon, ele)
-                    publish_slope(slope)  # ← seulement si parcours actif
+                    publish_slope(slope)
+
+                # Émet toujours la position (même en pause) pour que le front
+                # affiche la position courante sur la carte et le profil
+                self._emit(slope, lat, lon, ele, dist_m)
+
             except Exception as e:
                 print(f"[SlopeController] Erreur : {e}")
             time.sleep(self.PUBLISH_INTERVAL)
