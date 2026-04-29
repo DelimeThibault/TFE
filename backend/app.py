@@ -15,13 +15,13 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GPX_PATH = os.path.join(BASE_DIR, "static", "lln_24h.gpx")
 
-# PNG transparent 1×1px pour les tuiles manquantes (évite les 404 en console)
+# PNG transparent 1×1px pour les tuiles manquantes
 EMPTY_TILE = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
 )
 
 
-# ── Routes ────────────────────────────────────────────────────────────────────
+# ── Routes pages ──────────────────────────────────────────────────────────────
 
 
 @app.route("/")
@@ -34,8 +34,16 @@ def parcours():
     return render_template("parcours.html")
 
 
+# ── Routes API données ────────────────────────────────────────────────────────
+
+
 @app.route("/api/session")
 def api_session():
+    return jsonify(get_state())
+
+
+@app.route("/api/state")
+def api_state():
     return jsonify(get_state())
 
 
@@ -50,9 +58,30 @@ def api_parcours_lln():
     )
 
 
-@app.route("/api/state")
-def api_state():
-    return jsonify(get_state())
+# ── Routes API contrôle parcours ──────────────────────────────────────────────
+
+
+@app.route("/api/parcours/start", methods=["POST"])
+def api_parcours_start():
+    slope_ctrl.start_parcours()
+    return jsonify({"status": "started", "running": True})
+
+
+@app.route("/api/parcours/stop", methods=["POST"])
+def api_parcours_stop():
+    slope_ctrl.stop_parcours()
+    return jsonify({"status": "stopped", "running": False})
+
+
+@app.route("/api/parcours/reset", methods=["POST"])
+def api_parcours_reset():
+    slope_ctrl.reset_parcours()
+    return jsonify({"status": "reset"})
+
+
+@app.route("/api/parcours/status")
+def api_parcours_status():
+    return jsonify({"running": slope_ctrl.parcours_actif})
 
 
 # ── Tuiles OpenStreetMap (mode hors ligne) ────────────────────────────────────

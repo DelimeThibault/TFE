@@ -313,6 +313,24 @@
                 <span class="metric-value" id="m-dist">0.00</span>
                 <span class="metric-unit">km</span>
             </div>
+            <div class="metric-card" id="parcours-ctrl-card" style="justify-content: center; gap: 0.5rem;">
+                <span class="metric-label">Parcours</span>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <button id="btn-start" onclick="startParcours()"
+                        style="background:#6daa45;color:#fff;border:none;border-radius:0.5rem;padding:0.4rem 0.9rem;font-size:0.8rem;font-weight:600;cursor:pointer;">
+                        ▶ Démarrer
+                    </button>
+                    <button id="btn-stop" onclick="stopParcours()" disabled
+                        style="background:#2a2d3a;color:#6b7280;border:1px solid #2a2d3a;border-radius:0.5rem;padding:0.4rem 0.9rem;font-size:0.8rem;font-weight:600;cursor:pointer;">
+                        ⏸ Pause
+                    </button>
+                    <button id="btn-reset" onclick="resetParcours()"
+                        style="background:none;color:#6b7280;border:1px solid #2a2d3a;border-radius:0.5rem;padding:0.4rem 0.9rem;font-size:0.8rem;cursor:pointer;">
+                        ↺
+                    </button>
+                </div>
+                <span class="metric-unit" id="parcours-status-label">En attente</span>
+            </div>
         </div>
 
     </div>
@@ -323,7 +341,7 @@
         L.Icon.Default.imagePath = '/static/images/';
 
         L.tileLayer('/tiles/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributeurs',
+            attribution: '',
             maxZoom: 17,
             errorTileUrl: '',
         }).addTo(map);
@@ -427,6 +445,63 @@
             elevChart.data.datasets[1].data = routePoints.map((_, i) => i === posIdx ? eleMax : null);
             elevChart.update('none');
         }
+        // ── Contrôle parcours ─────────────────────────────────────────────────────────
+
+        let parcoursRunning = false;
+
+        function setParcoursBtns(running) {
+            parcoursRunning = running;
+            const btnStart = document.getElementById('btn-start');
+            const btnStop = document.getElementById('btn-stop');
+            const label = document.getElementById('parcours-status-label');
+
+            if (running) {
+                btnStart.disabled = true;
+                btnStart.style.background = '#2a2d3a';
+                btnStart.style.color = '#6b7280';
+                btnStop.disabled = false;
+                btnStop.style.background = '#dd6974';
+                btnStop.style.color = '#fff';
+                btnStop.style.borderColor = '#dd6974';
+                label.textContent = 'En cours...';
+                label.style.color = '#6daa45';
+            } else {
+                btnStart.disabled = false;
+                btnStart.style.background = '#6daa45';
+                btnStart.style.color = '#fff';
+                btnStop.disabled = true;
+                btnStop.style.background = '#2a2d3a';
+                btnStop.style.color = '#6b7280';
+                btnStop.style.borderColor = '#2a2d3a';
+                label.textContent = 'En attente';
+                label.style.color = '#6b7280';
+            }
+        }
+
+        function startParcours() {
+            fetch('/api/parcours/start', { method: 'POST' })
+                .then(() => setParcoursBtns(true));
+        }
+
+        function stopParcours() {
+            fetch('/api/parcours/stop', { method: 'POST' })
+                .then(() => setParcoursBtns(false));
+        }
+
+        function resetParcours() {
+            if (!confirm('Remettre la distance à zéro ?')) return;
+            fetch('/api/parcours/reset', { method: 'POST' })
+                .then(() => {
+                    setParcoursBtns(false);
+                    document.getElementById('m-dist').textContent = '0.00';
+                    document.getElementById('dist-badge').textContent = '0.00 km / ' + (totalDist / 1000).toFixed(2) + ' km';
+                });
+        }
+
+        // Récupère l'état au chargement de la page
+        fetch('/api/parcours/status')
+            .then(r => r.json())
+            .then(data => setParcoursBtns(data.running));
 
         // ── Socket.IO ─────────────────────────────────────────────────────────────
         const socket = io();

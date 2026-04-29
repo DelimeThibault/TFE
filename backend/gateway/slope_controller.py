@@ -79,19 +79,39 @@ class SlopeController:
     def __init__(self, gpx_path):
         self.points = load_gpx(gpx_path)
         self.total_dist = self.points[-1]["dist_m"]
-        self._running = False
+        self._running = False  # thread de calcul de pente actif
+        self.parcours_actif = False  # parcours démarré par l'utilisateur
         print(
             f"[SlopeController] {len(self.points)} points, "
             f"{self.total_dist/1000:.2f} km"
         )
 
     def start(self):
+        """Démarre le thread de calcul de pente (au boot de l'app)."""
         self._running = True
         threading.Thread(target=self._loop, daemon=True).start()
-        print("[SlopeController] Démarré")
+        print("[SlopeController] Thread démarré")
 
     def stop(self):
+        """Arrête le thread (arrêt de l'app)."""
         self._running = False
+
+    def start_parcours(self):
+        """Démarre le parcours — la position commence à avancer."""
+        self.parcours_actif = True
+        print("[SlopeController] Parcours démarré")
+
+    def stop_parcours(self):
+        """Met le parcours en pause — la position ne progresse plus."""
+        self.parcours_actif = False
+        print("[SlopeController] Parcours arrêté")
+
+    def reset_parcours(self):
+        """Remet la distance simulée à zéro."""
+        from gateway.session_store import reset_distance
+
+        reset_distance()
+        print("[SlopeController] Parcours réinitialisé")
 
     def get_route_data(self):
         return [
@@ -108,10 +128,11 @@ class SlopeController:
     def _loop(self):
         while self._running:
             try:
-                dist_m = get_state().get("distance_sim_m", 0.0)
-                slope, lat, lon, ele = get_slope_at_distance(self.points, dist_m)
-                update_slope(slope, lat, lon, ele)  # → session_store
-                publish_slope(slope)  # → MQTT → Pico
+                if self.parcours_actif:
+                    dist_m = get_state().get("distance_sim_m", 0.0)
+                    slope, lat, lon, ele = get_slope_at_distance(self.points, dist_m)
+                    update_slope(slope, lat, lon, ele)
+                    publish_slope(slope)  # ← seulement si parcours actif
             except Exception as e:
                 print(f"[SlopeController] Erreur : {e}")
             time.sleep(self.PUBLISH_INTERVAL)

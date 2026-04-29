@@ -6,18 +6,23 @@ import network
 import ubinascii
 import machine
 
+
 import lin_gauge
 import rad_gauge
 import tm1637_7_seg as tm1637
 import power_model
 
+
 from lcd_api import LcdApi
 from pico_i2c_lcd import I2cLcd
+
 
 from umqtt.simple import MQTTClient
 import config
 
+
 time.sleep(1)
+
 
 # =============================================================
 # I2C / LCD
@@ -25,6 +30,7 @@ time.sleep(1)
 SDA_PIN = 16
 SCL_PIN = 17
 I2C_NUMMER = 0
+
 
 sda = Pin(SDA_PIN)
 scl = Pin(SCL_PIN)
@@ -35,11 +41,14 @@ print(i2c.scan(), " (decimal)")
 if len(i2c.scan()) > 0:
     print(hex(i2c.scan()[0]), " (hex)")
 
+
 I2C_ADDR = 0x26
 I2C_NUM_ROWS = 2
 I2C_NUM_COLS = 16
 
+
 lcd = I2cLcd(i2c, I2C_ADDR, I2C_NUM_ROWS, I2C_NUM_COLS)
+
 
 # =============================================================
 # AFFICHEURS 7 SEGMENTS
@@ -51,14 +60,17 @@ p_out_num_disp.show("out ")
 p_in_num_disp.show("in  ")
 energy_num_disp.show("enrj")
 
+
 # =============================================================
 # BOUTONS
 # =============================================================
 btn1 = Pin(13, Pin.IN, Pin.PULL_DOWN)
 btn2 = Pin(14, Pin.IN, Pin.PULL_DOWN)
 
+
 bike_btn1 = Pin(19, Pin.IN, Pin.PULL_UP)
 bike_btn2 = Pin(20, Pin.IN, Pin.PULL_UP)
+
 
 # =============================================================
 # MOTEUR RESISTANCE
@@ -66,26 +78,46 @@ bike_btn2 = Pin(20, Pin.IN, Pin.PULL_UP)
 dir = Pin(22, Pin.OUT)
 en = PWM(21, freq=50)
 
+
 prev_res_pot = 1.1
 duty = 0
 set_point_ok = 0
 sum_of_errors = 0
 
+
+# =============================================================
+# ADC RESISTANCE — lecture initiale avant tout
+# On lit la position physique du potentiomètre au démarrage
+# pour éviter que le PID force le moteur dès le boot.
+# =============================================================
+adc = ADC(Pin(26))
+
+
+def get_res_pot():
+    return (adc.read_u16() * 3.3) / 65535
+
+
+_boot_pot = get_res_pot()
+gear_setpoint = round(max(0.4, min(1.1, round(_boot_pot / 0.1) * 0.1)), 1)
+
+
 # =============================================================
 # BRAQUET / PENTE / VITESSE SIMULEE
 # =============================================================
-gear_setpoint = 0.8
 slope_pct = 0.0
 slope_source = "none"
 slope_offset = 0.0
 speed_sim = 0.0
 
+
 SLOPE_RES_COEFF = 0.025
 SLOPE_RES_MAX = 0.35
+
 
 GEAR_MIN = 0.4
 GEAR_MAX = 1.1
 set_point = gear_setpoint
+
 
 # Modèle simplifié de vitesse simulée.
 # K_SPEED  : vitesse de base — augmenter si trop lente, diminuer si trop rapide.
@@ -97,6 +129,7 @@ K_SLOPE = 5.0
 K_INERTIE = 0.30
 DECEL = 1.5
 
+
 # =============================================================
 # GAINS PI
 # =============================================================
@@ -106,11 +139,12 @@ MAX_DUTY = 52000
 F_ECH_LS = 2
 MAX_SUM_ERRORS = (65000 / ki) / F_ECH_LS
 
+
 # Filtre EMA sur la cadence — lisse les oscillations dues aux
 # irrégularités mécaniques du pédalage (un seul aimant sur le pédalier).
-# Alpha 0.40 (avant 0.25)
+EMA_CADENCE = 0.70
 _ema_cadence = 0.0
-EMA_CADENCE = 0.40
+
 
 # =============================================================
 # VARIABLES MQTT
@@ -121,6 +155,7 @@ mqtt_seq = 0
 epoch_offset_ms = None
 last_timebase_seq = 0
 last_timebase_rx_ms = 0
+
 
 dernier_temps_appui = 0
 
@@ -153,16 +188,10 @@ def decrease_bike_r(pin):
 bike_btn1.irq(trigger=Pin.IRQ_FALLING, handler=increase_bike_r)
 bike_btn2.irq(trigger=Pin.IRQ_FALLING, handler=decrease_bike_r)
 
+
 # =============================================================
-# ADC RESISTANCE + RELAIS
+# RELAIS
 # =============================================================
-adc = ADC(Pin(26))
-
-
-def get_res_pot():
-    return (adc.read_u16() * 3.3) / 65535
-
-
 relay_pin = Pin(15, Pin.OUT)
 
 
@@ -173,9 +202,11 @@ def power_on_off(on_off):
 power_on_off(1)
 time.sleep(3)
 
+
 p_out_num_disp.show("    ")
 p_in_num_disp.show("    ")
 energy_num_disp.show("    ")
+
 
 # =============================================================
 # MESURE COURANT / ENERGIE
@@ -193,12 +224,14 @@ def get_current_u16():
 timer1 = Timer()
 timer2 = Timer()
 
+
 # Initialisé au temps courant pour éviter un faux T_rotation au démarrage.
 last_time = time.ticks_us()
 T_rotation = 0
 speed = 0
 speed_rpm = 0
 wheel_circ = 1.85
+
 
 i_sum = 0
 i_sum_of_squares = 0
@@ -213,7 +246,6 @@ energy = max_bat
 
 # =============================================================
 # INTERRUPTION HAUTE FREQUENCE — 786 Hz
-# Mesure le courant RMS et détecte les passages du reed switch.
 # =============================================================
 def hs_interrupt(timer):
     global int_count, i_sum, i_sum_of_squares
@@ -244,20 +276,16 @@ def ls_interrupt(timer):
     time_since_last_reed = time.ticks_diff(time.ticks_us(), last_time)
 
     if time_since_last_reed > 3000000:
-        # Arrêt confirmé : > 3s sans passage de l'aimant
         speed = 0
         speed_rpm = 0
         p_in = 0
         _ema_cadence = 0.0
     elif T_rotation > 0 and time_since_last_reed < T_rotation * 2:
-        # Mesure fraîche : le dernier T_rotation est plausible
         raw_rpm = 60.0 * 1e6 / T_rotation
         _ema_cadence = EMA_CADENCE * raw_rpm + (1.0 - EMA_CADENCE) * _ema_cadence
         speed_rpm = _ema_cadence
         speed = wheel_circ / (T_rotation / 1e6) * 3.6
         p_in = power_model.compute(prev_res_pot, speed_rpm)
-    # Si time_since_last_reed > T_rotation * 2 : le cycliste ralentit,
-    # on garde la dernière valeur sans la mettre à jour (pas de reset brutal)
 
     # --- 2. Courant / Energie ---
     if int_count > 0:
@@ -288,9 +316,6 @@ def ls_interrupt(timer):
     set_point = sp_raw
 
     # --- 4. Vitesse simulée ---
-    # Modèle simplifié cohérent : sqrt(puissance) réduit par la pente.
-    # Le facteur (slope/100)^0.7 donne une réduction non-linéaire réaliste :
-    # 5% de pente ≈ -35% de vitesse, 10% ≈ -55%, 0% = aucun effet.
     if p_in > 0:
         slope_factor = 1.0 + K_SLOPE * ((max(0.0, slope_pct) / 100.0) ** 0.7)
         speed_target = K_SPEED * (p_in**0.5) / slope_factor
@@ -352,8 +377,6 @@ def ls_interrupt(timer):
 
 # =============================================================
 # REED SWITCH — détection cadence pédalier
-# Anti-rebond temporel : deux passages séparés de moins de 150ms
-# sont ignorés (correspond à > 400 rpm, impossible sur un pédalier).
 # =============================================================
 def reed_switch_callback(pin):
     global last_time, T_rotation
@@ -361,10 +384,9 @@ def reed_switch_callback(pin):
 
     delta = time.ticks_diff(current_time_cb, last_time)
 
-    if delta < 150000:
+    if delta < 80000:
         return
 
-    # Plausibilité : ignore si > 5s (cycliste à l'arrêt → géré dans ls_interrupt)
     if delta > 5000000:
         last_time = current_time_cb
         return
@@ -517,6 +539,7 @@ last_reconnect_attempt = 0
 last_print_upd = utime.ticks_ms()
 RECONNECT_INTERVAL_MS = 150000
 
+
 try:
     while 1:
         now = utime.ticks_ms()
@@ -564,7 +587,6 @@ try:
             lcd.putstr("reste:{:4.2f} Wh".format(energy))
             lcd.move_to(0, 1)
             mode_str = "W" if mqtt_active else "S"
-            # Ligne 2 : braquet | vitesse simulée | mode (W=WiFi, S=Standalone)
             lcd.putstr(
                 "g:{:1.1f} {:4.1f}km/h {}".format(gear_setpoint, speed_sim, mode_str)[
                     :16
@@ -599,7 +621,6 @@ try:
 
             try:
                 mqtt_client.publish(config.MQTT_TOPIC_REALTIME, payload.encode(), qos=0)
-                # Print limité à 1x/seconde pour lisibilité — l'envoi MQTT reste à 200ms
                 if utime.ticks_diff(now, last_print_upd) >= 1000:
                     print(
                         f"📡 {cadence}RPM | {round(pos, 2)}V sp:{round(set_point, 2)}V "
