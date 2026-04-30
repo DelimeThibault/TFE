@@ -20,7 +20,6 @@ from pico_i2c_lcd import I2cLcd
 from umqtt.simple import MQTTClient
 import config
 
-
 time.sleep(1)
 
 
@@ -88,7 +87,7 @@ sum_of_errors = 0
 # =============================================================
 # ADC RESISTANCE — lecture initiale avant tout
 # On lit la position physique du potentiomètre au démarrage
-# pour éviter que le PID force le moteur dès le boot.
+# pour éviter que le PI force le moteur dès le boot.
 # =============================================================
 adc = ADC(Pin(26))
 
@@ -110,9 +109,10 @@ slope_offset = 0.0
 speed_sim = 0.0
 
 
-SLOPE_RES_COEFF = 0.025
+SLOPE_RES_COEFF_UP = 0.030  # montée : +0.30V à 10%
+SLOPE_RES_COEFF_DOWN = 0.025  # descente : -0.25V à 10% (plus doux)
 SLOPE_RES_MAX = 0.35
-
+SLOPE_RES_MIN = -0.30  # offset max descente (réduit la résistance)
 
 GEAR_MIN = 0.4
 GEAR_MAX = 1.1
@@ -121,14 +121,16 @@ set_point = gear_setpoint
 
 # Modèle simplifié de vitesse simulée.
 # K_SPEED  : vitesse de base — augmenter si trop lente, diminuer si trop rapide.
-# K_SLOPE  : réduction par % de pente (ex: 0.8 = -0.8% de vitesse par % de pente).
+# K_SLOPE_UP  : réduction par % de pente (ex: 0.8 = -0.8% de vitesse par % de pente).
+# K_SLOPE_DOWN : innertie pour la descente
 # K_INERTIE: réactivité de la vitesse (0.3 = souple, 0.7 = réponse rapide).
 # DECEL    : décélération en km/h par seconde quand le cycliste s'arrête.
 K_SPEED = 2.16
-K_SLOPE = 5.0
+K_SLOPE_UP = 5.0
+K_SLOPE_DOWN = 2.0
 K_INERTIE = 0.30
-DECEL = 1.5
-
+DECEL = 3.0
+SPEED_MAX = 60.0
 
 # =============================================================
 # GAINS PI
@@ -142,7 +144,7 @@ MAX_SUM_ERRORS = (65000 / ki) / F_ECH_LS
 
 # Filtre EMA sur la cadence — lisse les oscillations dues aux
 # irrégularités mécaniques du pédalage (un seul aimant sur le pédalier).
-EMA_CADENCE = 0.70
+EMA_CADENCE = 0.60
 _ema_cadence = 0.0
 
 
@@ -261,7 +263,7 @@ def print_7_seg(display, value):
 
 # =============================================================
 # INTERRUPTION BASSE FREQUENCE — 2 Hz
-# Ordre : cadence → énergie → set_point → speed_sim → PI résistance
+# Ordre : cadence -> énergie -> set_point -> speed_sim -> PI résistance
 # =============================================================
 def ls_interrupt(timer):
     global int_count, i_sum, i_sum_of_squares, p_out, p_in, energy
@@ -306,8 +308,15 @@ def ls_interrupt(timer):
         else:
             power_on_off(1)
 
-    # --- 3. Consigne résistance = braquet utilisateur + offset pente ---
-    slope_offset = min(slope_pct * SLOPE_RES_COEFF, SLOPE_RES_MAX)
+    # --- 3. Consigne résistance = braquet + offset pente ---
+    if slope_pct >= 0:
+        slope_offset = slope_pct * SLOPE_RES_COEFF_UP
+        slope_offset = min(slope_offset, SLOPE_RES_MAX)
+    else:
+        slope_offset = (
+            slope_pct * SLOPE_RES_COEFF_DOWN
+        )  # slope_pct négatif -> offset négatif
+        slope_offset = max(slope_offset, SLOPE_RES_MIN)
     sp_raw = gear_setpoint + slope_offset
     if sp_raw > 1.3:
         sp_raw = 1.3
@@ -317,15 +326,24 @@ def ls_interrupt(timer):
 
     # --- 4. Vitesse simulée ---
     if p_in > 0:
-        slope_factor = 1.0 + K_SLOPE * ((max(0.0, slope_pct) / 100.0) ** 0.7)
+        if slope_pct >= 0:
+            slope_factor = 1.0 + K_SLOPE_UP * ((slope_pct / 100.0) ** 0.7)
+        else:
+            slope_factor = max(0.35, 1.0 - K_SLOPE_DOWN * ((-slope_pct) / 100.0) ** 0.7)
         speed_target = K_SPEED * (p_in**0.5) / slope_factor
+        speed_target = min(speed_target, SPEED_MAX)
         speed_sim = speed_sim + (speed_target - speed_sim) * K_INERTIE
+        speed_sim = min(speed_sim, SPEED_MAX)
     else:
         speed_sim = max(0.0, speed_sim - DECEL * dt)
 
     # --- 5. Boucle PI résistance ---
     res_pot = get_res_pot()
     duty = 0
+
+    # Si le setpoint a changé, force la reprise du PI
+    if abs(res_pot - set_point) > 0.05:
+        set_point_ok = 0
 
     if set_point_ok > 3:
         en.duty_u16(0)

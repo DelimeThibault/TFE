@@ -354,6 +354,7 @@
 
         // ── Profil altimétrique ───────────────────────────────────────────────
         const ctx = document.getElementById('elevChart').getContext('2d');
+        let currentPosIdx = 0;
         const elevChart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -373,9 +374,12 @@
                         label: 'Position',
                         data: [],
                         borderColor: '#fdab43',
-                        borderWidth: 2,
-                        pointRadius: 0,
+                        backgroundColor: '#fdab43',
+                        borderWidth: 0,
+                        pointRadius: (context) => context.dataIndex === currentPosIdx ? 8 : 0,
+                        pointHoverRadius: 10,
                         fill: false,
+                        showLine: false,
                     }
                 ]
             },
@@ -434,11 +438,14 @@
             document.getElementById('ele-display').textContent = ele + ' m';
 
             if (routePoints.length === 0) return;
-            const idx = routePoints.findIndex(p => p.dist_m >= dist_m % totalDist);
-            const posIdx = idx === -1 ? routePoints.length - 1 : idx;
-            const eleMax = Math.max(...routePoints.map(p => p.ele)) + 2;
 
-            elevChart.data.datasets[1].data = routePoints.map((_, i) => i === posIdx ? eleMax : null);
+            const idx = routePoints.findIndex(p => p.dist_m >= dist_m % totalDist);
+            currentPosIdx = idx === -1 ? routePoints.length - 1 : idx;
+
+            // Le point se place sur la courbe à l'altitude réelle
+            elevChart.data.datasets[1].data = routePoints.map((p, i) =>
+                i === currentPosIdx ? p.ele : null
+            );
             elevChart.update('none');
         }
 
