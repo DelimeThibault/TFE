@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="dark">
 
 <head>
     <meta charset="UTF-8">
@@ -25,7 +25,6 @@
             min-height: 100vh;
         }
 
-        /* ── Light mode ── */
         [data-theme="light"] body {
             background: #f5f5f2;
             color: #1a1a1a;
@@ -55,7 +54,6 @@
             color: #1a1a1a;
         }
 
-        /* ── Nav ── */
         nav {
             background: #1a1d27;
             padding: 0 1.5rem;
@@ -128,7 +126,6 @@
             color: #e0e0e0;
         }
 
-        /* ── Layout ── */
         .main {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -136,6 +133,7 @@
             gap: 1rem;
             padding: 1rem;
             height: calc(100vh - 52px);
+            height: calc(100dvh - 52px);
         }
 
         .panel {
@@ -181,7 +179,6 @@
             position: relative;
         }
 
-        /* ── Métriques ── */
         .metrics {
             grid-column: 1 / -1;
             display: grid;
@@ -231,7 +228,6 @@
             color: #dd6974;
         }
 
-        /* ── Responsive ── */
         @media (max-width: 900px) {
             .main {
                 grid-template-columns: 1fr;
@@ -254,7 +250,7 @@
         <div class="conn-area">
             <span id="conn-dot"></span>
             <span id="conn-label">Déconnecté</span>
-            <button class="theme-btn" data-theme-toggle aria-label="Basculer le thème">
+            <button class="theme-btn" data-theme-toggle aria-label="Passer en mode clair">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                 </svg>
@@ -289,7 +285,7 @@
         <!-- Métriques -->
         <div class="metrics">
             <div class="metric-card highlight">
-                <span class="metric-label">Vitesse</span>
+                <span class="metric-label">Vitesse sim</span>
                 <span class="metric-value" id="m-speed">0.0</span>
                 <span class="metric-unit">km/h</span>
             </div>
@@ -313,18 +309,18 @@
                 <span class="metric-value" id="m-dist">0.00</span>
                 <span class="metric-unit">km</span>
             </div>
-            <div class="metric-card" id="parcours-ctrl-card" style="justify-content: center; gap: 0.5rem;">
+            <div class="metric-card" style="justify-content: center; gap: 0.5rem;">
                 <span class="metric-label">Parcours</span>
                 <div style="display:flex; gap:0.5rem; align-items:center;">
-                    <button id="btn-start" onclick="startParcours()"
+                    <button id="btn-start" onclick="startParcours()" aria-label="Démarrer le parcours"
                         style="background:#6daa45;color:#fff;border:none;border-radius:0.5rem;padding:0.4rem 0.9rem;font-size:0.8rem;font-weight:600;cursor:pointer;">
                         ▶ Démarrer
                     </button>
-                    <button id="btn-stop" onclick="stopParcours()" disabled
+                    <button id="btn-stop" onclick="stopParcours()" disabled aria-label="Mettre en pause le parcours"
                         style="background:#2a2d3a;color:#6b7280;border:1px solid #2a2d3a;border-radius:0.5rem;padding:0.4rem 0.9rem;font-size:0.8rem;font-weight:600;cursor:pointer;">
                         ⏸ Pause
                     </button>
-                    <button id="btn-reset" onclick="resetParcours()"
+                    <button id="btn-reset" onclick="resetParcours()" aria-label="Réinitialiser la distance"
                         style="background:none;color:#6b7280;border:1px solid #2a2d3a;border-radius:0.5rem;padding:0.4rem 0.9rem;font-size:0.8rem;cursor:pointer;">
                         ↺
                     </button>
@@ -336,7 +332,7 @@
     </div>
 
     <script>
-        // ── Carte Leaflet ─────────────────────────────────────────────────────────
+        // ── Carte Leaflet ─────────────────────────────────────────────────────
         const map = L.map('map', { zoomControl: true }).setView([50.6685, 4.6135], 15);
         L.Icon.Default.imagePath = '/static/images/';
 
@@ -356,7 +352,7 @@
             iconAnchor: [8, 8],
         });
 
-        // ── Profil altimétrique ───────────────────────────────────────────────────
+        // ── Profil altimétrique ───────────────────────────────────────────────
         const ctx = document.getElementById('elevChart').getContext('2d');
         const elevChart = new Chart(ctx, {
             type: 'line',
@@ -406,7 +402,7 @@
             }
         });
 
-        // ── Chargement GPX ────────────────────────────────────────────────────────
+        // ── Chargement GPX ────────────────────────────────────────────────────
         fetch('/api/parcours/lln')
             .then(r => r.json())
             .then(data => {
@@ -429,7 +425,7 @@
             })
             .catch(e => console.error('Erreur chargement GPX:', e));
 
-        // ── Mise à jour position ──────────────────────────────────────────────────
+        // ── Mise à jour position ──────────────────────────────────────────────
         function updatePosition(dist_m, lat, lon, ele) {
             if (posMarker) posMarker.setLatLng([lat, lon]);
 
@@ -445,12 +441,16 @@
             elevChart.data.datasets[1].data = routePoints.map((_, i) => i === posIdx ? eleMax : null);
             elevChart.update('none');
         }
-        // ── Contrôle parcours ─────────────────────────────────────────────────────────
 
-        let parcoursRunning = false;
+        // ── Mise à jour métriques ─────────────────────────────────────────────
+        function updateMetrics(data) {
+            document.getElementById('m-speed').textContent = (data.speed_sim_kmh ?? 0).toFixed(1);
+            document.getElementById('m-cadence').textContent = Math.round(data.cadence_rpm ?? 0);
+            document.getElementById('m-power').textContent = Math.round(data.power_w ?? 0);
+        }
 
+        // ── Contrôle parcours ─────────────────────────────────────────────────
         function setParcoursBtns(running) {
-            parcoursRunning = running;
             const btnStart = document.getElementById('btn-start');
             const btnStop = document.getElementById('btn-stop');
             const label = document.getElementById('parcours-status-label');
@@ -480,96 +480,97 @@
 
         function startParcours() {
             fetch('/api/parcours/start', { method: 'POST' })
-                .then(() => setParcoursBtns(true));
+                .then(r => { if (r.ok) setParcoursBtns(true); })
+                .catch(e => console.error('Erreur start parcours:', e));
         }
 
         function stopParcours() {
             fetch('/api/parcours/stop', { method: 'POST' })
-                .then(() => setParcoursBtns(false));
+                .then(r => { if (r.ok) setParcoursBtns(false); })
+                .catch(e => console.error('Erreur stop parcours:', e));
         }
 
         function resetParcours() {
             if (!confirm('Remettre la distance à zéro ?')) return;
             fetch('/api/parcours/reset', { method: 'POST' })
-                .then(() => {
+                .then(r => {
+                    if (!r.ok) return;
                     setParcoursBtns(false);
                     document.getElementById('m-dist').textContent = '0.00';
                     document.getElementById('dist-badge').textContent = '0.00 km / ' + (totalDist / 1000).toFixed(2) + ' km';
-                });
+                })
+                .catch(e => console.error('Erreur reset parcours:', e));
         }
 
-        // Récupère l'état au chargement de la page
         fetch('/api/parcours/status')
             .then(r => r.json())
-            .then(data => setParcoursBtns(data.running));
+            .then(data => setParcoursBtns(data.running))
+            .catch(e => console.error('Erreur statut parcours:', e));
 
-        // ── Socket.IO ─────────────────────────────────────────────────────────────
+        // ── Socket.IO ─────────────────────────────────────────────────────────
         const socket = io();
 
         socket.on('connect', () => {
             document.getElementById('conn-dot').classList.add('connected');
             document.getElementById('conn-label').textContent = 'Connecté';
         });
+
         socket.on('disconnect', () => {
             document.getElementById('conn-dot').classList.remove('connected');
             document.getElementById('conn-label').textContent = 'Déconnecté';
         });
 
         socket.on('realtime_update', data => {
-            document.getElementById('m-speed').textContent = (data.speed_kmh ?? 0).toFixed(1);
-            document.getElementById('m-cadence').textContent = Math.round(data.cadence_rpm ?? 0);
-            document.getElementById('m-power').textContent = Math.round(data.power_w ?? 0);
+            updateMetrics(data);
             document.getElementById('m-dist').textContent = ((data.distance_sim_m ?? 0) / 1000).toFixed(2);
+
             const slope = data.slope_pct ?? 0;
             document.getElementById('m-slope').textContent = slope.toFixed(1);
             document.getElementById('slope-card').className =
                 'metric-card' + (slope > 4 ? ' danger' : slope > 1.5 ? ' warn' : ' highlight');
+
             if (data.current_lat && data.current_lon) {
                 updatePosition(data.distance_sim_m ?? 0, data.current_lat, data.current_lon, data.current_ele ?? 0);
             }
         });
 
         socket.on('session_snapshot', state => {
-            const r = state.last_realtime;
-            if (r) {
-                document.getElementById('m-speed').textContent = (r.speed_kmh ?? 0).toFixed(1);
-                document.getElementById('m-cadence').textContent = Math.round(r.cadence_rpm ?? 0);
-                document.getElementById('m-power').textContent = Math.round(r.power_w ?? 0);
-            }
+            if (state.last_realtime) updateMetrics(state.last_realtime);
             document.getElementById('m-dist').textContent = ((state.distance_sim_m ?? 0) / 1000).toFixed(2);
             document.getElementById('m-slope').textContent = (state.slope_pct ?? 0).toFixed(1);
+
             if (state.current_lat && state.current_lon) {
                 updatePosition(state.distance_sim_m ?? 0, state.current_lat, state.current_lon, state.current_ele ?? 0);
             }
         });
 
-        // ── Chargement initial ────────────────────────────────────────────────────
         fetch('/api/state')
             .then(r => r.json())
             .then(state => {
-                const r = state.last_realtime;
-                if (r) {
-                    document.getElementById('m-speed').textContent = (r.speed_kmh ?? 0).toFixed(1);
-                    document.getElementById('m-cadence').textContent = Math.round(r.cadence_rpm ?? 0);
-                    document.getElementById('m-power').textContent = Math.round(r.power_w ?? 0);
-                }
+                if (state.last_realtime) updateMetrics(state.last_realtime);
                 document.getElementById('m-dist').textContent = ((state.distance_sim_m ?? 0) / 1000).toFixed(2);
                 document.getElementById('m-slope').textContent = (state.slope_pct ?? 0).toFixed(1);
-            });
+            })
+            .catch(e => console.error('Erreur /api/state:', e));
 
-        // ── Theme toggle ──────────────────────────────────────────────────────────
+        // ── Theme toggle ──────────────────────────────────────────────────────
         (function () {
             const btn = document.querySelector('[data-theme-toggle]');
             const html = document.documentElement;
-            let dark = true;
+            let dark = !window.matchMedia('(prefers-color-scheme: light)').matches;
+            html.setAttribute('data-theme', dark ? 'dark' : 'light');
 
             const moonSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
             const sunSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
+
+            btn.innerHTML = dark ? moonSVG : sunSVG;
+            btn.setAttribute('aria-label', dark ? 'Passer en mode clair' : 'Passer en mode sombre');
 
             btn.addEventListener('click', () => {
                 dark = !dark;
                 html.setAttribute('data-theme', dark ? 'dark' : 'light');
                 btn.innerHTML = dark ? moonSVG : sunSVG;
+                btn.setAttribute('aria-label', dark ? 'Passer en mode clair' : 'Passer en mode sombre');
             });
         })();
     </script>

@@ -124,7 +124,7 @@ set_point = gear_setpoint
 # K_SLOPE  : réduction par % de pente (ex: 0.8 = -0.8% de vitesse par % de pente).
 # K_INERTIE: réactivité de la vitesse (0.3 = souple, 0.7 = réponse rapide).
 # DECEL    : décélération en km/h par seconde quand le cycliste s'arrête.
-K_SPEED = 3.20
+K_SPEED = 2.16
 K_SLOPE = 5.0
 K_INERTIE = 0.30
 DECEL = 1.5

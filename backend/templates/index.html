@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="dark">
 
 <head>
   <meta charset="UTF-8">
@@ -22,7 +22,6 @@
       min-height: 100vh;
     }
 
-    /* ── Light mode ── */
     [data-theme="light"] body {
       background: #f5f5f2;
       color: #1a1a1a;
@@ -51,22 +50,11 @@
       color: #1a1a1a;
     }
 
-    [data-theme="light"] .latency-cell {
-      border-color: #e0ddd8;
-    }
-
-    [data-theme="light"] .parcours-btn {
-      background: linear-gradient(135deg, #ffffff 0%, #f0f4f8 100%);
-      border-color: #e0ddd8;
-      color: #1a1a1a;
-    }
-
     [data-theme="light"] #session-id,
     [data-theme="light"] #system-state {
       color: #1a1a1a;
     }
 
-    /* ── Nav ── */
     nav {
       background: #1a1d27;
       padding: 0 1.5rem;
@@ -139,7 +127,6 @@
       color: #e0e0e0;
     }
 
-    /* ── Layout ── */
     .main {
       padding: 1.25rem;
       display: flex;
@@ -169,7 +156,6 @@
       justify-content: space-between;
     }
 
-    /* ── Métriques ── */
     .metrics-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -215,7 +201,6 @@
       color: #4f98a3;
     }
 
-    /* ── Session ── */
     .status-row {
       display: flex;
       align-items: center;
@@ -248,64 +233,6 @@
       color: #dd6974;
     }
 
-    /* ── Latence ── */
-    .latency-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-    }
-
-    .latency-cell {
-      padding: 1rem 1.5rem;
-      border-right: 1px solid #2a2d3a;
-    }
-
-    .latency-cell:last-child {
-      border-right: none;
-    }
-
-    /* ── Bouton parcours ── */
-    .parcours-btn {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 1rem 1.5rem;
-      background: linear-gradient(135deg, #1a1d27 0%, #1e2535 100%);
-      border: 1px solid #2a2d3a;
-      border-radius: 0.75rem;
-      text-decoration: none;
-      color: #e0e0e0;
-      transition: border-color 180ms, background 180ms;
-    }
-
-    .parcours-btn:hover {
-      border-color: #4f98a3;
-      background: linear-gradient(135deg, #1a1d27 0%, #1f2d30 100%);
-    }
-
-    .parcours-btn .btn-left {
-      display: flex;
-      flex-direction: column;
-      gap: 0.3rem;
-    }
-
-    .parcours-btn .btn-title {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: #4f98a3;
-    }
-
-    .parcours-btn .btn-sub {
-      font-size: 0.75rem;
-      color: #6b7280;
-    }
-
-    .parcours-btn .btn-arrow {
-      font-size: 1.25rem;
-      color: #4f98a3;
-      opacity: 0.7;
-    }
-
-    /* ── Responsive ── */
     @media (max-width: 600px) {
       .metrics-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -331,7 +258,7 @@
     <div class="conn-area">
       <span id="conn-dot"></span>
       <span id="conn-label">Déconnecté</span>
-      <button class="theme-btn" data-theme-toggle aria-label="Basculer le thème">
+      <button class="theme-btn" data-theme-toggle aria-label="Passer en mode clair">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
         </svg>
@@ -370,7 +297,7 @@
           <div class="metric-unit">RPM</div>
         </div>
         <div class="metric-cell">
-          <div class="metric-label">Vitesse</div>
+          <div class="metric-label">Vitesse sim</div>
           <div class="metric-value" id="speed">--</div>
           <div class="metric-unit">km/h</div>
         </div>
@@ -389,39 +316,8 @@
           <div class="metric-value" id="energy">--</div>
           <div class="metric-unit">Wh</div>
         </div>
-        <div class="metric-cell">
-          <div class="metric-label">Pente sim</div>
-          <div class="metric-value" id="slope">--</div>
-          <div class="metric-unit">%</div>
-        </div>
       </div>
     </div>
-
-    <!-- Latence -->
-    <div class="panel">
-      <div class="panel-header">Latence</div>
-      <div class="latency-grid">
-        <div class="latency-cell">
-          <div class="metric-label">Capteur → App</div>
-          <div class="metric-value" style="font-size:1.4rem;" id="lat-app">--</div>
-          <div class="metric-unit">ms</div>
-        </div>
-        <div class="latency-cell">
-          <div class="metric-label">Bout en bout</div>
-          <div class="metric-value" style="font-size:1.4rem;" id="lat-e2e">--</div>
-          <div class="metric-unit">ms</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Bouton parcours -->
-    <a href="/parcours" class="parcours-btn">
-      <div class="btn-left">
-        <span class="btn-title">🗺️ Parcours 24h Vélo de LLN</span>
-        <span class="btn-sub">Carte en temps réel · Profil altimétrique · Position courante</span>
-      </div>
-      <span class="btn-arrow">→</span>
-    </a>
 
   </div>
 
@@ -442,27 +338,25 @@
       document.getElementById('status-badge').className = 'badge err';
     });
 
-    socket.on('realtime_update', data => {
+    function updateMetrics(data) {
       document.getElementById('cadence').textContent = data.cadence_rpm != null ? Math.round(data.cadence_rpm) : '--';
-      document.getElementById('speed').textContent = data.speed_kmh != null ? data.speed_kmh.toFixed(1) : '--';
+      document.getElementById('speed').textContent = data.speed_sim_kmh != null ? data.speed_sim_kmh.toFixed(1) : '--';
       document.getElementById('power').textContent = data.power_w != null ? Math.round(data.power_w) : '--';
       document.getElementById('resistance').textContent = data.resistance_v != null ? data.resistance_v.toFixed(2) : '--';
       document.getElementById('energy').textContent = data.energy_wh != null ? data.energy_wh.toFixed(2) : '--';
       document.getElementById('session-id').textContent = data.session_id ?? '--';
-      if (data.ts_pico_ms && data.ts_app_rx_ms) {
-        document.getElementById('lat-app').textContent = (data.ts_app_rx_ms - data.ts_pico_ms) + ' ms';
-      }
+    }
+
+    socket.on('realtime_update', data => {
+      updateMetrics(data);
     });
 
     socket.on('session_snapshot', state => {
-      const s = state.last_status;
-      if (s) document.getElementById('system-state').textContent = s.state ?? '--';
-      if (state.slope_pct != null) {
-        document.getElementById('slope').textContent = state.slope_pct.toFixed(1);
+      if (state.last_status?.state) {
+        document.getElementById('system-state').textContent = state.last_status.state;
       }
-      if (state.last_realtime?.ts_pico_ms && state.last_realtime?.ts_app_rx_ms) {
-        document.getElementById('lat-app').textContent =
-          (state.last_realtime.ts_app_rx_ms - state.last_realtime.ts_pico_ms) + ' ms';
+      if (state.last_realtime) {
+        updateMetrics(state.last_realtime);
       }
     });
 
@@ -470,15 +364,19 @@
     (function () {
       const btn = document.querySelector('[data-theme-toggle]');
       const html = document.documentElement;
-      let dark = true;
+      let dark = !window.matchMedia('(prefers-color-scheme: light)').matches;
+      html.setAttribute('data-theme', dark ? 'dark' : 'light');
 
       const moonSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
       const sunSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
+
+      btn.innerHTML = dark ? moonSVG : sunSVG;
 
       btn.addEventListener('click', () => {
         dark = !dark;
         html.setAttribute('data-theme', dark ? 'dark' : 'light');
         btn.innerHTML = dark ? moonSVG : sunSVG;
+        btn.setAttribute('aria-label', dark ? 'Passer en mode clair' : 'Passer en mode sombre');
       });
     })();
   </script>
