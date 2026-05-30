@@ -1,0 +1,348 @@
+
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vélo connecté — Entrainements</title>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --panel-2: #151821;
+      --border: #2a2d3a;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --faint: #6b7280;
+      --accent: #4f98a3;
+      --accent-2: #6bbbc6;
+      --ok: #6daa45;
+      --warn: #e8af34;
+    }
+
+    [data-theme="light"] {
+      --bg: #f5f5f2;
+      --panel: #ffffff;
+      --panel-2: #fcfcfb;
+      --border: #e0ddd8;
+      --text: #1a1a1a;
+      --muted: #6b7280;
+      --faint: #9ca3af;
+      --accent: #01696f;
+      --accent-2: #0f7f86;
+      --ok: #437a22;
+      --warn: #b07a00;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    nav {
+      background: var(--panel);
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      border-bottom: 1px solid var(--border);
+      height: 52px;
+    }
+
+    nav .logo {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--accent);
+      letter-spacing: 0.05em;
+    }
+
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      padding: 0.25rem 0;
+      border-bottom: 2px solid transparent;
+      transition: color 180ms, border-color 180ms;
+    }
+
+    nav a:hover {
+      color: var(--text);
+    }
+
+    nav a.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .theme-btn {
+      margin-left: auto;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--faint);
+      display: flex;
+      align-items: center;
+    }
+
+    .theme-btn:hover {
+      color: var(--text);
+    }
+
+    .main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1.25rem;
+    }
+
+    .page-head {
+      margin-bottom: 1rem;
+    }
+
+    .page-head h1 {
+      font-size: 1.7rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .page-head p {
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 0.95rem;
+      padding: 1rem;
+      display: grid;
+      gap: 0.9rem;
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+
+    .card h2 {
+      font-size: 1.05rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    .badge.easy {
+      background: rgba(109, 170, 69, 0.16);
+      color: var(--ok);
+    }
+
+    .badge.mid {
+      background: rgba(79, 152, 163, 0.16);
+      color: var(--accent);
+    }
+
+    .badge.hard {
+      background: rgba(232, 175, 52, 0.18);
+      color: var(--warn);
+    }
+
+    .segments {
+      display: grid;
+      gap: 0.45rem;
+    }
+
+    .segment {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      font-size: 0.9rem;
+      border-bottom: 1px dashed var(--border);
+      padding-bottom: 0.35rem;
+    }
+
+    .segment:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .segment span:last-child {
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .btn {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 44px;
+      border-radius: 0.75rem;
+      padding: 0.85rem 1rem;
+      font-weight: 700;
+      text-decoration: none;
+      background: var(--accent);
+      color: white;
+      transition: transform 180ms, opacity 180ms;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    @media (max-width: 980px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <nav>
+    <span class="logo">🚴 Vélo LLN</span>
+    <a href="/">Dashboard</a>
+    <a href="/parcours">Parcours 24h</a>
+    <a href="/entrainements" class="active">Entrainements</a>
+
+    <button class="theme-btn" data-theme-toggle aria-label="Passer en mode clair">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+      </svg>
+    </button>
+  </nav>
+
+  <main class="main">
+    <div class="page-head">
+      <h1>Entrainements</h1>
+      <p>Choisis une séance.</p>
+    </div>
+
+    <section class="grid">
+      <article class="card">
+        <div class="card-top">
+          <div>
+            <h2>Test 5 min</h2>
+            <div class="meta">5 min · niveau facile</div>
+          </div>
+          <span class="badge easy">Facile</span>
+        </div>
+
+        <div class="segments">
+          <div class="segment"><span>Échauffement</span><span>1 min · 110 W</span></div>
+          <div class="segment"><span>Bloc 1</span><span>1 min · 180 W</span></div>
+          <div class="segment"><span>Récupération</span><span>1 min · 100 W</span></div>
+          <div class="segment"><span>Bloc 2</span><span>1 min · 190 W</span></div>
+          <div class="segment"><span>Retour au calme</span><span>1 min · 90 W</span></div>
+        </div>
+
+        <a class="btn" href="/entrainements/session/easy-5">Démarrer</a>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <div>
+            <h2>Test 10 min</h2>
+            <div class="meta">10 min · niveau intermédiaire</div>
+          </div>
+          <span class="badge mid">Intermédiaire</span>
+        </div>
+
+        <div class="segments">
+          <div class="segment"><span>Échauffement</span><span>2 min · 120 W</span></div>
+          <div class="segment"><span>Bloc 1</span><span>3 min · 200 W</span></div>
+          <div class="segment"><span>Récupération</span><span>2 min · 110 W</span></div>
+          <div class="segment"><span>Bloc 2</span><span>2 min · 220 W</span></div>
+          <div class="segment"><span>Retour au calme</span><span>1 min · 100 W</span></div>
+        </div>
+
+        <a class="btn" href="/entrainements/session/mid-10">Démarrer</a>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <div>
+            <h2>Test 15 min</h2>
+            <div class="meta">15 min · niveau difficile</div>
+          </div>
+          <span class="badge hard">Difficile</span>
+        </div>
+
+        <div class="segments">
+          <div class="segment"><span>Échauffement</span><span>3 min · 130 W</span></div>
+          <div class="segment"><span>Bloc 1</span><span>3 min · 220 W</span></div>
+          <div class="segment"><span>Récupération</span><span>2 min · 110 W</span></div>
+          <div class="segment"><span>Bloc 2</span><span>3 min · 240 W</span></div>
+          <div class="segment"><span>Récupération</span><span>2 min · 120 W</span></div>
+          <div class="segment"><span>Bloc 3</span><span>2 min · 260 W</span></div>
+        </div>
+
+        <a class="btn" href="/entrainements/session/hard-15">Démarrer</a>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const btn = document.querySelector('[data-theme-toggle]');
+      const html = document.documentElement;
+
+      let storedTheme = null;
+      try {
+        storedTheme = localStorage.getItem('velo-theme');
+      } catch (e) {}
+
+      let dark = storedTheme
+        ? storedTheme === 'dark'
+        : !window.matchMedia('(prefers-color-scheme: light)').matches;
+
+      html.setAttribute('data-theme', dark ? 'dark' : 'light');
+
+      const moonSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+      const sunSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
+
+      btn.innerHTML = dark ? moonSVG : sunSVG;
+      btn.setAttribute('aria-label', dark ? 'Passer en mode clair' : 'Passer en mode sombre');
+
+      btn.addEventListener('click', () => {
+        dark = !dark;
+        html.setAttribute('data-theme', dark ? 'dark' : 'light');
+        btn.innerHTML = dark ? moonSVG : sunSVG;
+        btn.setAttribute('aria-label', dark ? 'Passer en mode clair' : 'Passer en mode sombre');
+        try {
+          localStorage.setItem('velo-theme', dark ? 'dark' : 'light');
+        } catch (e) {}
+      });
+    })();
+  </script>
+</body>
+
+</html>

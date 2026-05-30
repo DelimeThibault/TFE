@@ -4,7 +4,7 @@ import os
 import base64
 
 from gateway.mqtt_client import start_mqtt, set_message_handler
-from gateway.session_store import get_state
+from gateway.session_store import get_state, reset_dashboard_state, pause_session, resume_session, is_session_running
 from gateway.slope_controller import SlopeController
 
 app = Flask(__name__)
@@ -18,8 +18,12 @@ EMPTY_TILE = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
 )
 
-# ── Routes pages ───────────────────────────────────────────────────────────────
+slope_ctrl = None
 
+WORKOUT_IDS = {"easy-5", "mid-10", "hard-15"}
+
+
+# ── Routes pages ───────────────────────────────────────────────────────────────
 
 @app.route("/")
 def index():
@@ -31,8 +35,19 @@ def parcours():
     return render_template("parcours.html")
 
 
-# ── Routes API données ─────────────────────────────────────────────────────────
+@app.route("/entrainements")
+def entrainements():
+    return render_template("entrainements.html")
 
+
+@app.route("/entrainements/session/<workout_id>")
+def entrainement_session(workout_id):
+    if workout_id not in WORKOUT_IDS:
+        return render_template("entrainements.html"), 404
+    return render_template("entrainement_session.html", workout_id=workout_id)
+
+
+# ── Routes API données ─────────────────────────────────────────────────────────
 
 @app.route("/api/session")
 def api_session():
@@ -46,6 +61,9 @@ def api_state():
 
 @app.route("/api/parcours/lln")
 def api_parcours_lln():
+    if slope_ctrl is None:
+        return jsonify({"name": "24h Vélo de LLN", "total_dist": 0.0, "points": []})
+
     return jsonify(
         {
             "name": "24h Vélo de LLN",
@@ -57,46 +75,99 @@ def api_parcours_lln():
 
 # ── Routes API contrôle parcours ───────────────────────────────────────────────
 
-
 @app.route("/api/parcours/start", methods=["POST"])
 def api_parcours_start():
+    if slope_ctrl is None:
+        return jsonify({"status": "unavailable", "running": False}), 503
+
     slope_ctrl.start_parcours()
     return jsonify({"status": "started", "running": True})
 
 
 @app.route("/api/parcours/stop", methods=["POST"])
 def api_parcours_stop():
+    if slope_ctrl is None:
+        return jsonify({"status": "unavailable", "running": False}), 503
+
     slope_ctrl.stop_parcours()
     return jsonify({"status": "stopped", "running": False})
 
 
 @app.route("/api/parcours/reset", methods=["POST"])
 def api_parcours_reset():
+    if slope_ctrl is None:
+        return jsonify({"status": "unavailable"}), 503
+
     slope_ctrl.reset_parcours()
-    socketio.emit("parcours_reset", {})  # ← notifie le front
-    return jsonify({"status": "reset"})
+    socketio.emit("parcours_reset", {})
+    return jsonify({"status": "reset", "scope": "parcours"})
 
 
 @app.route("/api/parcours/status")
 def api_parcours_status():
     state = get_state()
+
     return jsonify(
         {
-            "running": slope_ctrl.parcours_actif,
+            "running": slope_ctrl.parcours_actif if slope_ctrl is not None else False,
             "distance_m": state.get("distance_sim_m", 0.0),
+            "distance_session_m": state.get("distance_session_m", 0.0),
             "slope_pct": state.get("slope_pct", 0.0),
             "lat": state.get("current_lat"),
             "lon": state.get("current_lon"),
             "ele": state.get("current_ele"),
-            "speed_sim_kmh": (state.get("last_realtime") or {}).get(
-                "speed_sim_kmh", 0.0
-            ),
+            "speed_sim_kmh": (state.get("last_realtime") or {}).get("speed_sim_kmh", 0.0),
         }
     )
 
 
-# ── Tuiles hors ligne ──────────────────────────────────────────────────────────
+# ── Routes API contrôle dashboard ──────────────────────────────────────────────
 
+@app.route("/api/dashboard/reset", methods=["POST"])
+def api_dashboard_reset():
+    state = reset_dashboard_state()
+    socketio.emit("dashboard_reset", state)
+    socketio.emit("session_snapshot", state)
+    return jsonify({"status": "reset", "scope": "dashboard"})
+
+@app.route("/api/session/status")
+def api_session_status():
+    state = get_state()
+    return jsonify(
+        {
+            "running": is_session_running(),
+            "session_id": state.get("session_id"),
+            "last_update_ns": state.get("last_update_ns"),
+        }
+    )
+
+
+@app.route("/api/session/pause", methods=["POST"])
+def api_session_pause():
+    state = pause_session()
+    socketio.emit("session_snapshot", state)
+    return jsonify(
+        {
+            "status": "paused",
+            "running": False,
+            "session_id": state.get("session_id"),
+        }
+    )
+
+
+@app.route("/api/session/resume", methods=["POST"])
+def api_session_resume():
+    state = resume_session()
+    socketio.emit("session_snapshot", state)
+    return jsonify(
+        {
+            "status": "running",
+            "running": True,
+            "session_id": state.get("session_id"),
+        }
+    )
+
+# ── Tuiles hors ligne ──────────────────────────────────────────────────────────
 
 @app.route("/tiles/<int:z>/<int:x>/<int:y>.png")
 def serve_tile(z, x, y):
@@ -109,18 +180,14 @@ def serve_tile(z, x, y):
 
 # ── Handler MQTT → Socket.IO ───────────────────────────────────────────────────
 
-
 def forward_to_ui(event_name, payload, state):
     socketio.emit(event_name, payload)
     socketio.emit("session_snapshot", state)
 
 
 # ── Callback SlopeController → Socket.IO ──────────────────────────────────────
-# Permet au thread SlopeController d'émettre la position GPS en temps réel
-
 
 def emit_position(slope_pct, lat, lon, ele, distance_m):
-    """Appelé par SlopeController à chaque cycle (0.5s)."""
     socketio.emit(
         "position_update",
         {
@@ -133,9 +200,11 @@ def emit_position(slope_pct, lat, lon, ele, distance_m):
     )
 
 
-# ── Lancement ──────────────────────────────────────────────────────────────────
+# ── Initialisation ─────────────────────────────────────────────────────────────
 
-if __name__ == "__main__":
+def init_services():
+    global slope_ctrl
+
     set_message_handler(forward_to_ui)
     start_mqtt()
 
@@ -145,4 +214,11 @@ if __name__ == "__main__":
     else:
         print(f"[WARN] GPX introuvable : {GPX_PATH} — SlopeController non démarré")
 
+
+init_services()
+
+
+# ── Lancement ──────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=2500, debug=True)

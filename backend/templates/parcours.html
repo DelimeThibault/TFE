@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr" data-theme="dark">
+<html lang="fr" data-theme="light">
 
 <head>
     <meta charset="UTF-8">
@@ -52,6 +52,13 @@
 
         [data-theme="light"] .metric-value {
             color: #1a1a1a;
+        }
+
+        [data-theme="light"] .metric-label,
+        [data-theme="light"] .metric-unit,
+        [data-theme="light"] .conn-area,
+        [data-theme="light"] #conn-label {
+            color: #6b7280;
         }
 
         nav {
@@ -242,15 +249,15 @@
 </head>
 
 <body>
-
     <nav>
         <span class="logo">🚴 Vélo LLN</span>
         <a href="/">Dashboard</a>
         <a href="/parcours" class="active">Parcours 24h</a>
+        <a href="/entrainements">Entrainements</a>
         <div class="conn-area">
             <span id="conn-dot"></span>
             <span id="conn-label">Déconnecté</span>
-            <button class="theme-btn" data-theme-toggle aria-label="Passer en mode clair">
+            <button class="theme-btn" data-theme-toggle aria-label="Passer en mode sombre">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                 </svg>
@@ -259,8 +266,6 @@
     </nav>
 
     <div class="main">
-
-        <!-- Carte -->
         <div class="panel">
             <div class="panel-header">
                 Carte — Position en temps réel
@@ -269,7 +274,6 @@
             <div id="map"></div>
         </div>
 
-        <!-- Profil altimétrique -->
         <div class="panel">
             <div class="panel-header">
                 Profil altimétrique
@@ -282,7 +286,6 @@
             </div>
         </div>
 
-        <!-- Métriques -->
         <div class="metrics">
             <div class="metric-card highlight">
                 <span class="metric-label">Vitesse sim</span>
@@ -311,7 +314,7 @@
             </div>
             <div class="metric-card" style="justify-content: center; gap: 0.5rem;">
                 <span class="metric-label">Parcours</span>
-                <div style="display:flex; gap:0.5rem; align-items:center;">
+                <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap: wrap;">
                     <button id="btn-start" onclick="startParcours()" aria-label="Démarrer le parcours"
                         style="background:#6daa45;color:#fff;border:none;border-radius:0.5rem;padding:0.4rem 0.9rem;font-size:0.8rem;font-weight:600;cursor:pointer;">
                         ▶ Démarrer
@@ -328,11 +331,11 @@
                 <span class="metric-unit" id="parcours-status-label">En attente</span>
             </div>
         </div>
-
     </div>
 
     <script>
-        // ── Carte Leaflet ─────────────────────────────────────────────────────
+        const THEME_KEY = 'velo-theme';
+
         const map = L.map('map', { zoomControl: true }).setView([50.6685, 4.6135], 15);
         L.Icon.Default.imagePath = '/static/images/';
 
@@ -352,7 +355,6 @@
             iconAnchor: [8, 8],
         });
 
-        // ── Profil altimétrique ───────────────────────────────────────────────
         const ctx = document.getElementById('elevChart').getContext('2d');
         let currentPosIdx = 0;
         const elevChart = new Chart(ctx, {
@@ -375,11 +377,14 @@
                         data: [],
                         borderColor: '#fdab43',
                         backgroundColor: '#fdab43',
-                        borderWidth: 0,
-                        pointRadius: (context) => context.dataIndex === currentPosIdx ? 8 : 0,
-                        pointHoverRadius: 10,
+                        pointBackgroundColor: [],
+                        pointBorderColor: [],
+                        pointBorderWidth: [],
+                        pointRadius: [],
+                        pointHoverRadius: [],
                         fill: false,
                         showLine: false,
+                        spanGaps: false
                     }
                 ]
             },
@@ -406,7 +411,6 @@
             }
         });
 
-        // ── Chargement GPX ────────────────────────────────────────────────────
         fetch('/api/parcours/lln')
             .then(r => r.json())
             .then(data => {
@@ -425,11 +429,16 @@
 
                 elevChart.data.labels = routePoints.map((_, i) => i);
                 elevChart.data.datasets[0].data = routePoints.map(p => p.ele);
+                elevChart.data.datasets[1].data = routePoints.map((p, i) => i === 0 ? p.ele : null);
+                elevChart.data.datasets[1].pointRadius = routePoints.map((_, i) => i === 0 ? 8 : 0);
+                elevChart.data.datasets[1].pointHoverRadius = routePoints.map((_, i) => i === 0 ? 10 : 0);
+                elevChart.data.datasets[1].pointBackgroundColor = routePoints.map((_, i) => i === 0 ? '#fdab43' : 'rgba(0,0,0,0)');
+                elevChart.data.datasets[1].pointBorderColor = routePoints.map((_, i) => i === 0 ? '#ffffff' : 'rgba(0,0,0,0)');
+                elevChart.data.datasets[1].pointBorderWidth = routePoints.map((_, i) => i === 0 ? 2 : 0);
                 elevChart.update('none');
             })
             .catch(e => console.error('Erreur chargement GPX:', e));
 
-        // ── Mise à jour position ──────────────────────────────────────────────
         function updatePosition(dist_m, lat, lon, ele) {
             if (posMarker) posMarker.setLatLng([lat, lon]);
 
@@ -439,24 +448,50 @@
 
             if (routePoints.length === 0) return;
 
-            const idx = routePoints.findIndex(p => p.dist_m >= dist_m % totalDist);
+            const normalizedDist = totalDist > 0 ? (dist_m % totalDist) : dist_m;
+            const idx = routePoints.findIndex(p => p.dist_m >= normalizedDist);
             currentPosIdx = idx === -1 ? routePoints.length - 1 : idx;
 
-            // Le point se place sur la courbe à l'altitude réelle
-            elevChart.data.datasets[1].data = routePoints.map((p, i) =>
+            const positionData = routePoints.map((p, i) =>
                 i === currentPosIdx ? p.ele : null
             );
+
+            const pointRadius = routePoints.map((_, i) =>
+                i === currentPosIdx ? 8 : 0
+            );
+
+            const pointHoverRadius = routePoints.map((_, i) =>
+                i === currentPosIdx ? 10 : 0
+            );
+
+            const pointBackgroundColor = routePoints.map((_, i) =>
+                i === currentPosIdx ? '#fdab43' : 'rgba(0,0,0,0)'
+            );
+
+            const pointBorderColor = routePoints.map((_, i) =>
+                i === currentPosIdx ? '#ffffff' : 'rgba(0,0,0,0)'
+            );
+
+            const pointBorderWidth = routePoints.map((_, i) =>
+                i === currentPosIdx ? 2 : 0
+            );
+
+            elevChart.data.datasets[1].data = positionData;
+            elevChart.data.datasets[1].pointRadius = pointRadius;
+            elevChart.data.datasets[1].pointHoverRadius = pointHoverRadius;
+            elevChart.data.datasets[1].pointBackgroundColor = pointBackgroundColor;
+            elevChart.data.datasets[1].pointBorderColor = pointBorderColor;
+            elevChart.data.datasets[1].pointBorderWidth = pointBorderWidth;
+
             elevChart.update('none');
         }
 
-        // ── Mise à jour métriques ─────────────────────────────────────────────
         function updateMetrics(data) {
             document.getElementById('m-speed').textContent = (data.speed_sim_kmh ?? 0).toFixed(1);
             document.getElementById('m-cadence').textContent = Math.round(data.cadence_rpm ?? 0);
             document.getElementById('m-power').textContent = Math.round(data.power_w ?? 0);
         }
 
-        // ── Contrôle parcours ─────────────────────────────────────────────────
         function setParcoursBtns(running) {
             const btnStart = document.getElementById('btn-start');
             const btnStop = document.getElementById('btn-stop');
@@ -514,7 +549,6 @@
             .then(data => setParcoursBtns(data.running))
             .catch(e => console.error('Erreur statut parcours:', e));
 
-        // ── Socket.IO ─────────────────────────────────────────────────────────
         const socket = io();
 
         socket.on('connect', () => {
@@ -560,28 +594,45 @@
             })
             .catch(e => console.error('Erreur /api/state:', e));
 
-        // ── Theme toggle ──────────────────────────────────────────────────────
-        (function () {
-            const btn = document.querySelector('[data-theme-toggle]');
+        function applyTheme(theme) {
             const html = document.documentElement;
-            let dark = !window.matchMedia('(prefers-color-scheme: light)').matches;
-            html.setAttribute('data-theme', dark ? 'dark' : 'light');
+            const btn = document.querySelector('[data-theme-toggle]');
+            html.setAttribute('data-theme', theme);
 
             const moonSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
             const sunSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
 
-            btn.innerHTML = dark ? moonSVG : sunSVG;
-            btn.setAttribute('aria-label', dark ? 'Passer en mode clair' : 'Passer en mode sombre');
+            if (btn) {
+                btn.innerHTML = theme === 'dark' ? sunSVG : moonSVG;
+                btn.setAttribute('aria-label', theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre');
+            }
+        }
 
-            btn.addEventListener('click', () => {
-                dark = !dark;
-                html.setAttribute('data-theme', dark ? 'dark' : 'light');
-                btn.innerHTML = dark ? moonSVG : sunSVG;
-                btn.setAttribute('aria-label', dark ? 'Passer en mode clair' : 'Passer en mode sombre');
-            });
-        })();
+        function initTheme() {
+            let savedTheme = 'light';
+            try {
+                savedTheme = localStorage.getItem(THEME_KEY) || 'light';
+            } catch (e) {
+                savedTheme = 'light';
+            }
+            applyTheme(savedTheme);
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme') || 'light';
+            const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(nextTheme);
+            try {
+                localStorage.setItem(THEME_KEY, nextTheme);
+            } catch (e) {
+                console.warn('Impossible de sauvegarder le thème', e);
+            }
+        }
+
+        document.querySelector('[data-theme-toggle]').addEventListener('click', toggleTheme);
+        initTheme();
     </script>
-
 </body>
 
 </html>

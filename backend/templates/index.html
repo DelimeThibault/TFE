@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr" data-theme="dark">
+<html lang="fr" data-theme="light">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vélo connecté — Dashboard</title>
   <script src="/static/socket.io.min.js"></script>
   <style>
@@ -32,17 +32,16 @@
       border-color: #e0ddd8;
     }
 
-    [data-theme="light"] .panel {
+    [data-theme="light"] .panel,
+    [data-theme="light"] .energy-equivalents {
       background: #ffffff;
       border-color: #e0ddd8;
     }
 
-    [data-theme="light"] .panel-header {
-      border-color: #e0ddd8;
-      color: #9ca3af;
-    }
-
-    [data-theme="light"] .metric-cell {
+    [data-theme="light"] .panel-header,
+    [data-theme="light"] .metric-cell,
+    [data-theme="light"] .energy-total-box,
+    [data-theme="light"] .equivalent-card {
       border-color: #e0ddd8;
     }
 
@@ -50,9 +49,57 @@
       color: #1a1a1a;
     }
 
-    [data-theme="light"] #session-id,
-    [data-theme="light"] #system-state {
-      color: #1a1a1a;
+    [data-theme="light"] .energy-total-box,
+    [data-theme="light"] .equivalent-card {
+      background: #fcfcfb;
+    }
+
+    [data-theme="light"] .equivalent-meta,
+    [data-theme="light"] .equivalent-status,
+    [data-theme="light"] .energy-total-box span,
+    [data-theme="light"] .metric-unit,
+    [data-theme="light"] .metric-label,
+    [data-theme="light"] .panel-header,
+    [data-theme="light"] .conn-area,
+    [data-theme="light"] #conn-label {
+      color: #6b7280;
+    }
+
+    [data-theme="light"] .equivalent-progress {
+      background: #ece8e2;
+    }
+
+    [data-theme="light"] .equivalent-card.done {
+      border-color: rgba(67, 122, 34, 0.45);
+      box-shadow: 0 0 0 1px rgba(67, 122, 34, 0.08);
+    }
+
+    [data-theme="light"] .equivalent-card.done .equivalent-status {
+      color: #2e6b16;
+    }
+
+    [data-theme="light"] .playpause-btn {
+      background: #ecfdf3;
+      border-color: #b7e4c7;
+      color: #166534;
+      box-shadow: 0 6px 18px rgba(22, 101, 52, 0.12);
+    }
+
+    [data-theme="light"] .playpause-btn:hover {
+      background: #dcfce7;
+      border-color: #86d3a3;
+    }
+
+    [data-theme="light"] .playpause-btn.paused {
+      background: #eff6ff;
+      border-color: #bfd7ff;
+      color: #1d4ed8;
+      box-shadow: 0 6px 18px rgba(29, 78, 216, 0.12);
+    }
+
+    [data-theme="light"] .playpause-btn.paused:hover {
+      background: #dbeafe;
+      border-color: #93c5fd;
     }
 
     nav {
@@ -144,7 +191,7 @@
     }
 
     .panel-header {
-      padding: 0.75rem 1rem;
+      padding: 0.9rem 1rem;
       border-bottom: 1px solid #2a2d3a;
       font-size: 0.75rem;
       font-weight: 600;
@@ -154,37 +201,116 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .panel-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .playpause-btn,
+    .reset-btn {
+      border-radius: 0.65rem;
+      padding: 0.65rem 1rem;
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: 180ms ease;
+    }
+
+    .playpause-btn {
+      border: 1px solid #1f7a52;
+      background: #15803d;
+      color: #ffffff;
+      box-shadow: 0 6px 18px rgba(21, 128, 61, 0.25);
+    }
+
+    .playpause-btn:hover {
+      background: #166534;
+      border-color: #14532d;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 22px rgba(21, 128, 61, 0.32);
+    }
+
+    .playpause-btn.paused {
+      border-color: #2563eb;
+      background: #1d4ed8;
+      color: #ffffff;
+      box-shadow: 0 6px 18px rgba(29, 78, 216, 0.25);
+    }
+
+    .playpause-btn.paused:hover {
+      background: #1e40af;
+      border-color: #1d4ed8;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 22px rgba(29, 78, 216, 0.32);
+    }
+
+    .playpause-btn:active,
+    .reset-btn:active {
+      transform: translateY(0);
+    }
+
+    .playpause-btn:disabled,
+    .reset-btn:disabled {
+      opacity: 0.6;
+      cursor: wait;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .reset-btn {
+      border: 1px solid #b42318;
+      background: #d92d20;
+      color: #ffffff;
+      box-shadow: 0 6px 18px rgba(217, 45, 32, 0.25);
+    }
+
+    .reset-btn:hover {
+      background: #b42318;
+      border-color: #912018;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 22px rgba(180, 35, 24, 0.32);
     }
 
     .metrics-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
     }
 
     .metric-cell {
-      padding: 1.25rem 1.5rem;
+      padding: 1.7rem 1.6rem;
       border-right: 1px solid #2a2d3a;
       border-bottom: 1px solid #2a2d3a;
+      min-height: 145px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
 
-    .metric-cell:nth-child(3n) {
+    .metric-cell:nth-child(2n) {
       border-right: none;
     }
 
-    .metric-cell:nth-last-child(-n+3) {
+    .metric-cell:nth-last-child(-n+2) {
       border-bottom: none;
     }
 
     .metric-label {
-      font-size: 0.7rem;
+      font-size: 0.76rem;
       text-transform: uppercase;
       letter-spacing: 0.08em;
       color: #6b7280;
-      margin-bottom: 0.35rem;
+      margin-bottom: 0.45rem;
     }
 
     .metric-value {
-      font-size: 2rem;
+      font-size: 2.45rem;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
       line-height: 1;
@@ -192,73 +318,228 @@
     }
 
     .metric-unit {
-      font-size: 0.75rem;
+      font-size: 0.9rem;
       color: #6b7280;
-      margin-top: 0.2rem;
+      margin-top: 0.35rem;
     }
 
     .metric-cell.highlight .metric-value {
       color: #4f98a3;
     }
 
-    .status-row {
+    .energy-equivalents {
+      margin-top: 4px;
+      padding: 1.25rem;
+      background: #1a1d27;
+      border-radius: 0.75rem;
+      border: 1px solid #2a2d3a;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 1.1rem;
+      color: inherit;
+    }
+
+    .energy-total-box {
+      min-width: 180px;
+      padding: 0.8rem 0.95rem;
+      border-radius: 0.75rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid #2a2d3a;
+      text-align: right;
+    }
+
+    .energy-total-box span {
+      display: block;
+      font-size: 0.75rem;
+      color: #9ca3af;
+      margin-bottom: 0.2rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .energy-total-box strong {
+      font-size: 1.35rem;
+      font-variant-numeric: tabular-nums;
+      color: inherit;
+    }
+
+    .equivalents-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+
+    .equivalent-card {
+      position: relative;
+      padding: 1rem;
+      border-radius: 0.9rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid #2a2d3a;
+      transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    .equivalent-card:hover {
+      transform: translateY(-2px);
+      border-color: #3a4151;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+    }
+
+    .equivalent-card.done {
+      border-color: rgba(109, 170, 69, 0.5);
+      box-shadow: 0 0 0 1px rgba(109, 170, 69, 0.12);
+    }
+
+    .equivalent-top {
       display: flex;
       align-items: center;
-      gap: 2rem;
-      padding: 0.875rem 1.5rem;
+      gap: 0.7rem;
+      margin-bottom: 0.55rem;
     }
 
-    .status-item {
+    .equivalent-icon {
+      font-size: 1.8rem;
+      line-height: 1;
+    }
+
+    .equivalent-card h3 {
+      font-size: 1rem;
+      margin: 0;
+    }
+
+    .equivalent-meta {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #4f98a3;
+      margin-bottom: 0.8rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .equivalent-progress {
+      width: 100%;
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      margin-bottom: 0.75rem;
+    }
+
+    .equivalent-progress-bar {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #4f98a3 0%, #6bbbc6 100%);
+      transition: width 350ms ease;
+    }
+
+    .equivalent-card.done .equivalent-progress-bar {
+      background: linear-gradient(90deg, #6daa45 0%, #8ad85f 100%);
+    }
+
+    .equivalent-stats {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.88rem;
+      margin-bottom: 0.45rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .equivalent-stats strong {
+      color: #4f98a3;
+    }
+
+    .equivalent-card.done .equivalent-stats strong {
+      color: #8ad85f;
+    }
+
+    .equivalent-status {
+      font-size: 0.84rem;
+      color: #9ca3af;
+      min-height: 2.6rem;
+      line-height: 1.35;
       display: flex;
       flex-direction: column;
-      gap: 0.2rem;
+      gap: 0.15rem;
     }
 
-    .badge {
-      display: inline-block;
-      padding: 0.2rem 0.6rem;
-      border-radius: 999px;
-      font-size: 0.7rem;
-      font-weight: 700;
-      letter-spacing: 0.05em;
+    .equivalent-status span {
+      display: block;
     }
 
-    .badge.ok {
-      background: rgba(109, 170, 69, 0.15);
-      color: #6daa45;
+    .equivalent-card.done .equivalent-status {
+      color: #8ad85f;
+      font-weight: 600;
     }
 
-    .badge.err {
-      background: rgba(221, 105, 116, 0.15);
-      color: #dd6974;
-    }
-
-    @media (max-width: 600px) {
-      .metrics-grid {
+    @media (max-width: 980px) {
+      .equivalents-grid {
         grid-template-columns: repeat(2, 1fr);
       }
+    }
 
-      .metric-cell:nth-child(3n) {
-        border-right: 1px solid #2a2d3a;
+    @media (max-width: 700px) {
+      .metrics-grid {
+        grid-template-columns: 1fr;
       }
 
-      .metric-cell:nth-child(2n) {
-        border-right: none;
+      .metric-cell {
+        border-right: none !important;
+        border-bottom: 1px solid #2a2d3a !important;
+        min-height: 125px;
+      }
+
+      .metric-cell:last-child {
+        border-bottom: none !important;
+      }
+
+      .metric-value {
+        font-size: 2.2rem;
+      }
+
+      .section-head {
+        flex-direction: column;
+      }
+
+      .energy-total-box {
+        width: 100%;
+        text-align: left;
+      }
+
+      .equivalents-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .panel-header {
+        flex-direction: column;
+        align-items: flex-start;
       }
     }
   </style>
 </head>
 
 <body>
-
   <nav>
     <span class="logo">🚴 Vélo LLN</span>
     <a href="/" class="active">Dashboard</a>
     <a href="/parcours">Parcours 24h</a>
+    <a href="/entrainements">Entrainements</a>
+
     <div class="conn-area">
       <span id="conn-dot"></span>
       <span id="conn-label">Déconnecté</span>
-      <button class="theme-btn" data-theme-toggle aria-label="Passer en mode clair">
+      <button class="theme-btn" data-theme-toggle aria-label="Passer en mode sombre">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
         </svg>
@@ -267,120 +548,350 @@
   </nav>
 
   <div class="main">
-
-    <!-- Session -->
     <div class="panel">
-      <div class="panel-header">Session</div>
-      <div class="status-row">
-        <div class="status-item">
-          <span class="metric-label">Statut</span>
-          <span id="status-badge" class="badge err">Déconnecté</span>
-        </div>
-        <div class="status-item">
-          <span class="metric-label">Session ID</span>
-          <span id="session-id" style="font-size:0.85rem; font-variant-numeric:tabular-nums;">--</span>
-        </div>
-        <div class="status-item">
-          <span class="metric-label">État système</span>
-          <span id="system-state" style="font-size:0.85rem;">--</span>
+      <div class="panel-header">
+        <span>Métriques temps réel</span>
+        <div class="panel-actions">
+          <button
+            id="pausePlayBtn"
+            class="playpause-btn"
+            type="button"
+            aria-pressed="false"
+            aria-label="Mettre en pause la session">
+            Pause
+          </button>
+          <button id="resetSessionBtn" class="reset-btn" type="button">Reset session</button>
         </div>
       </div>
-    </div>
 
-    <!-- Métriques -->
-    <div class="panel">
-      <div class="panel-header">Métriques temps réel</div>
       <div class="metrics-grid">
+        <div class="metric-cell">
+          <div class="metric-label">Durée</div>
+          <div class="metric-value" id="duration">00:00</div>
+          <div class="metric-unit">session</div>
+        </div>
+
+        <div class="metric-cell">
+          <div class="metric-label">Distance parcourue</div>
+          <div class="metric-value" id="distance">0.00</div>
+          <div class="metric-unit">km</div>
+        </div>
+
         <div class="metric-cell highlight">
           <div class="metric-label">Cadence</div>
           <div class="metric-value" id="cadence">--</div>
           <div class="metric-unit">RPM</div>
         </div>
+
         <div class="metric-cell">
-          <div class="metric-label">Vitesse sim</div>
+          <div class="metric-label">Vitesse simulée</div>
           <div class="metric-value" id="speed">--</div>
           <div class="metric-unit">km/h</div>
         </div>
+
         <div class="metric-cell">
           <div class="metric-label">Puissance</div>
           <div class="metric-value" id="power">--</div>
           <div class="metric-unit">W</div>
         </div>
+
         <div class="metric-cell">
           <div class="metric-label">Résistance</div>
           <div class="metric-value" id="resistance">--</div>
           <div class="metric-unit">V</div>
         </div>
-        <div class="metric-cell">
-          <div class="metric-label">Énergie</div>
-          <div class="metric-value" id="energy">--</div>
-          <div class="metric-unit">Wh</div>
-        </div>
       </div>
     </div>
 
+    <section class="energy-equivalents">
+      <div class="section-head">
+        <h2>Équivalences du quotidien</h2>
+        <div class="energy-total-box">
+          <span>Production session</span>
+          <strong id="energySessionValue">0.0 Wh</strong>
+        </div>
+      </div>
+
+      <div class="equivalents-grid" id="equivalentsGrid"></div>
+    </section>
   </div>
 
   <script>
     const socket = io();
+    const THEME_KEY = 'velo-theme';
+
+    const ENERGY_EQUIVALENTS = [
+      { key: "led", name: "Ampoule LED", icon: "💡", targetWh: 5 },
+      { key: "phone", name: "Recharge smartphone", icon: "📱", targetWh: 20 },
+      { key: "toaster", name: "Grille-pain", icon: "🍞", targetWh: 170 },
+      { key: "washer", name: "Machine à laver", icon: "🧺", targetWh: 900 }
+    ];
+
+    let currentPowerW = 0;
+    let isSessionPaused = false;
+    let isActionLoading = false;
+
+    function formatWh(value) {
+      return `${Number(value || 0).toFixed(1)} Wh`;
+    }
+
+    function formatMinutes(minutes) {
+      if (!isFinite(minutes) || minutes <= 0) return "-- min";
+      if (minutes < 1) return "< 1 min";
+      if (minutes < 60) return `${Math.ceil(minutes)} min`;
+      const h = Math.floor(minutes / 60);
+      const m = Math.ceil(minutes % 60);
+      return m === 60 ? `${h + 1} h` : `${h} h ${m} min`;
+    }
+
+    function formatSessionDuration(totalSeconds) {
+      const sec = Math.max(0, Math.floor(totalSeconds || 0));
+      const hours = Math.floor(sec / 3600);
+      const minutes = Math.floor((sec % 3600) / 60);
+      const seconds = sec % 60;
+
+      if (hours > 0) {
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      }
+      return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    function getRemainingTimeMinutes(remainingWh, powerW) {
+      if (!powerW || powerW <= 0) return Infinity;
+      return (remainingWh / powerW) * 60;
+    }
+
+    function renderEnergyEquivalents(energyWh = 0, powerW = 0) {
+      const totalEl = document.getElementById('energySessionValue');
+      const gridEl = document.getElementById('equivalentsGrid');
+
+      if (!totalEl || !gridEl) return;
+
+      const safeEnergy = Number(energyWh || 0);
+      const safePower = Number(powerW || 0);
+
+      totalEl.textContent = formatWh(safeEnergy);
+
+      gridEl.innerHTML = ENERGY_EQUIVALENTS.map((item) => {
+        const progress = Math.min((safeEnergy / item.targetWh) * 100, 100);
+        const done = safeEnergy >= item.targetWh;
+        const remainingWh = Math.max(item.targetWh - safeEnergy, 0);
+        const remainingMinutes = getRemainingTimeMinutes(remainingWh, safePower);
+
+        return `
+          <article class="equivalent-card ${done ? 'done' : ''}">
+            <div class="equivalent-top">
+              <div class="equivalent-icon">${item.icon}</div>
+              <h3>${item.name}</h3>
+            </div>
+
+            <div class="equivalent-meta">${formatWh(item.targetWh)}</div>
+
+            <div class="equivalent-progress">
+              <div class="equivalent-progress-bar" style="width: ${progress}%;"></div>
+            </div>
+
+            <div class="equivalent-stats">
+              <span>${formatWh(Math.min(safeEnergy, item.targetWh))} / ${formatWh(item.targetWh)}</span>
+              <strong>${Math.round(progress)}%</strong>
+            </div>
+
+            <div class="equivalent-status">
+              ${done
+                ? 'Objectif atteint'
+                : `<span>Encore ${formatWh(remainingWh)}</span><span>~ ${formatMinutes(remainingMinutes)} au rythme actuel</span>`}
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function updateSessionMetricsUI(distanceSessionM = 0, durationSessionS = 0) {
+      document.getElementById('distance').textContent = (Number(distanceSessionM || 0) / 1000).toFixed(2);
+      document.getElementById('duration').textContent = formatSessionDuration(durationSessionS);
+    }
+
+    function setPausePlayUI(paused) {
+      isSessionPaused = Boolean(paused);
+      const btn = document.getElementById('pausePlayBtn');
+      if (!btn) return;
+
+      if (isSessionPaused) {
+        btn.textContent = 'Play';
+        btn.classList.add('paused');
+        btn.setAttribute('aria-pressed', 'true');
+        btn.setAttribute('aria-label', 'Reprendre la session');
+      } else {
+        btn.textContent = 'Pause';
+        btn.classList.remove('paused');
+        btn.setAttribute('aria-pressed', 'false');
+        btn.setAttribute('aria-label', 'Mettre en pause la session');
+      }
+    }
+
+    function setButtonsLoading(loading) {
+      isActionLoading = Boolean(loading);
+      const pauseBtn = document.getElementById('pausePlayBtn');
+      const resetBtn = document.getElementById('resetSessionBtn');
+
+      if (pauseBtn) pauseBtn.disabled = isActionLoading;
+      if (resetBtn) resetBtn.disabled = isActionLoading;
+    }
+
+    function updateMetrics(data, fullState = null) {
+      const cadence = data?.cadence_rpm != null ? Math.round(data.cadence_rpm) : '--';
+      const speedDisplay = data?.speed_sim_kmh != null ? Number(data.speed_sim_kmh).toFixed(1) : '--';
+      const powerValue = data?.power_w != null ? Number(data.power_w) : 0;
+      const powerDisplay = data?.power_w != null ? Math.round(data.power_w) : '--';
+      const resistanceDisplay = data?.resistance_v != null ? Number(data.resistance_v).toFixed(2) : '--';
+
+      const energySessionWh = fullState?.last_realtime?.energy_session_wh ?? data?.energy_session_wh ?? 0;
+      const distanceSessionM = fullState?.distance_session_m ?? 0;
+      const durationSessionS = fullState?.session_duration_s ?? 0;
+
+      document.getElementById('cadence').textContent = cadence;
+      document.getElementById('speed').textContent = speedDisplay;
+      document.getElementById('power').textContent = powerDisplay;
+      document.getElementById('resistance').textContent = resistanceDisplay;
+
+      currentPowerW = powerValue;
+
+      updateSessionMetricsUI(distanceSessionM, durationSessionS);
+      renderEnergyEquivalents(Number(energySessionWh || 0), currentPowerW);
+
+      const pausedFromState =
+        fullState?.is_paused ??
+        fullState?.session_paused ??
+        data?.is_paused ??
+        data?.session_paused;
+
+      if (typeof pausedFromState === 'boolean') {
+        setPausePlayUI(pausedFromState);
+      }
+    }
+
+    async function pauseSession() {
+      await fetch('/api/dashboard/pause', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    async function resumeSession() {
+      await fetch('/api/dashboard/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    async function togglePausePlay() {
+      if (isActionLoading) return;
+
+      setButtonsLoading(true);
+      try {
+        if (isSessionPaused) {
+          await resumeSession();
+          setPausePlayUI(false);
+        } else {
+          await pauseSession();
+          setPausePlayUI(true);
+        }
+      } catch (error) {
+        console.error('Erreur pause/play dashboard:', error);
+      } finally {
+        setButtonsLoading(false);
+      }
+    }
+
+    async function resetSession() {
+      if (isActionLoading) return;
+
+      setButtonsLoading(true);
+      try {
+        await fetch('/api/dashboard/reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        setPausePlayUI(false);
+      } catch (error) {
+        console.error('Erreur reset dashboard:', error);
+      } finally {
+        setButtonsLoading(false);
+      }
+    }
+
+    function applyTheme(theme) {
+      const html = document.documentElement;
+      const btn = document.querySelector('[data-theme-toggle]');
+
+      html.setAttribute('data-theme', theme);
+
+      const moonSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+      const sunSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
+
+      if (btn) {
+        btn.innerHTML = theme === 'dark' ? sunSVG : moonSVG;
+        btn.setAttribute('aria-label', theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre');
+      }
+    }
+
+    function initTheme() {
+      let savedTheme = 'light';
+      try {
+        savedTheme = localStorage.getItem(THEME_KEY) || 'light';
+      } catch (e) {
+        savedTheme = 'light';
+      }
+      applyTheme(savedTheme);
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const currentTheme = html.getAttribute('data-theme') || 'light';
+      const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+      applyTheme(nextTheme);
+
+      try {
+        localStorage.setItem(THEME_KEY, nextTheme);
+      } catch (e) {
+        console.warn('Impossible de sauvegarder le thème', e);
+      }
+    }
 
     socket.on('connect', () => {
       document.getElementById('conn-dot').classList.add('connected');
       document.getElementById('conn-label').textContent = 'Connecté';
-      document.getElementById('status-badge').textContent = 'Connecté';
-      document.getElementById('status-badge').className = 'badge ok';
     });
 
     socket.on('disconnect', () => {
       document.getElementById('conn-dot').classList.remove('connected');
       document.getElementById('conn-label').textContent = 'Déconnecté';
-      document.getElementById('status-badge').textContent = 'Déconnecté';
-      document.getElementById('status-badge').className = 'badge err';
     });
 
-    function updateMetrics(data) {
-      document.getElementById('cadence').textContent = data.cadence_rpm != null ? Math.round(data.cadence_rpm) : '--';
-      document.getElementById('speed').textContent = data.speed_sim_kmh != null ? data.speed_sim_kmh.toFixed(1) : '--';
-      document.getElementById('power').textContent = data.power_w != null ? Math.round(data.power_w) : '--';
-      document.getElementById('resistance').textContent = data.resistance_v != null ? data.resistance_v.toFixed(2) : '--';
-      document.getElementById('energy').textContent = data.energy_wh != null ? data.energy_wh.toFixed(2) : '--';
-      document.getElementById('session-id').textContent = data.session_id ?? '--';
-    }
-
-    socket.on('realtime_update', data => {
-      updateMetrics(data);
+    socket.on('realtime_update', () => {
     });
 
-    socket.on('session_snapshot', state => {
-      if (state.last_status?.state) {
-        document.getElementById('system-state').textContent = state.last_status.state;
-      }
-      if (state.last_realtime) {
-        updateMetrics(state.last_realtime);
-      }
+    socket.on('session_snapshot', (state) => {
+      const realtime = state?.last_realtime || {};
+      updateMetrics(realtime, state);
     });
 
-    // ── Theme toggle ──────────────────────────────────────────────────────────
-    (function () {
-      const btn = document.querySelector('[data-theme-toggle]');
-      const html = document.documentElement;
-      let dark = !window.matchMedia('(prefers-color-scheme: light)').matches;
-      html.setAttribute('data-theme', dark ? 'dark' : 'light');
+    socket.on('dashboard_reset', (state) => {
+      const realtime = state?.last_realtime || {};
+      updateMetrics(realtime, state);
+      setPausePlayUI(false);
+    });
 
-      const moonSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
-      const sunSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
+    document.getElementById('pausePlayBtn').addEventListener('click', togglePausePlay);
+    document.getElementById('resetSessionBtn').addEventListener('click', resetSession);
+    document.querySelector('[data-theme-toggle]').addEventListener('click', toggleTheme);
 
-      btn.innerHTML = dark ? moonSVG : sunSVG;
-
-      btn.addEventListener('click', () => {
-        dark = !dark;
-        html.setAttribute('data-theme', dark ? 'dark' : 'light');
-        btn.innerHTML = dark ? moonSVG : sunSVG;
-        btn.setAttribute('aria-label', dark ? 'Passer en mode clair' : 'Passer en mode sombre');
-      });
-    })();
+    initTheme();
+    setPausePlayUI(false);
+    updateSessionMetricsUI(0, 0);
+    renderEnergyEquivalents(0, 0);
   </script>
-
 </body>
 
 </html>

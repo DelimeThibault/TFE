@@ -215,7 +215,7 @@ energy_num_disp.show("    ")
 # =============================================================
 LSB_TO_AMPS = 0.008171500
 F_ECH_HS = 786
-max_bat = 20
+max_bat = 0
 
 
 def get_current_u16():

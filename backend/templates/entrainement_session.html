@@ -1,0 +1,909 @@
+
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vélo connecté — Session</title>
+  <script src="/static/socket.io.min.js"></script>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --panel-2: #151821;
+      --border: #2a2d3a;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --faint: #6b7280;
+      --accent: #4f98a3;
+      --accent-2: #6bbbc6;
+      --ok: #6daa45;
+      --warn: #e8af34;
+      --danger: #dd6974;
+    }
+
+    [data-theme="light"] {
+      --bg: #f5f5f2;
+      --panel: #ffffff;
+      --panel-2: #fcfcfb;
+      --border: #e0ddd8;
+      --text: #1a1a1a;
+      --muted: #6b7280;
+      --faint: #9ca3af;
+      --accent: #01696f;
+      --accent-2: #0f7f86;
+      --ok: #437a22;
+      --warn: #b07a00;
+      --danger: #a13544;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    nav {
+      background: var(--panel);
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      border-bottom: 1px solid var(--border);
+      height: 52px;
+    }
+
+    nav .logo {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--accent);
+      letter-spacing: 0.05em;
+    }
+
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      padding: 0.25rem 0;
+      border-bottom: 2px solid transparent;
+      transition: color 180ms, border-color 180ms;
+    }
+
+    nav a:hover {
+      color: var(--text);
+    }
+
+    nav a.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .conn-area {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--faint);
+    }
+
+    #conn-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--danger);
+      transition: background 300ms;
+    }
+
+    #conn-dot.connected {
+      background: var(--ok);
+    }
+
+    .theme-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--faint);
+      padding: 0.25rem;
+      margin-left: 0.25rem;
+      display: flex;
+      align-items: center;
+    }
+
+    .theme-btn:hover {
+      color: var(--text);
+    }
+
+    .main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 1.25rem;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 0.95rem;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    .panel-header {
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .panel-body {
+      padding: 1rem;
+    }
+
+    .session-title h1 {
+      font-size: 1.55rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .session-title p {
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    .live-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.9rem;
+      margin-bottom: 1rem;
+    }
+
+    .metric-box {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 0.9rem;
+      padding: 1rem;
+    }
+
+    .metric-label {
+      font-size: 0.74rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+
+    .metric-value {
+      font-size: 2rem;
+      line-height: 1;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .metric-unit {
+      color: var(--muted);
+      margin-top: 0.3rem;
+      font-size: 0.85rem;
+    }
+
+    .current-step {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 0.9rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .current-step h2 {
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .current-step p {
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 0.65rem;
+    }
+
+    .progress-wrap {
+      margin-top: 0.8rem;
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      font-size: 0.86rem;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 14px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transition: width 250ms linear;
+    }
+
+    .session-state {
+      margin-top: 0.8rem;
+      color: var(--muted);
+      font-size: 0.92rem;
+      min-height: 1.4rem;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 0.55rem;
+      margin-top: 1rem;
+    }
+
+    .timeline-row {
+      display: grid;
+      grid-template-columns: 86px 1fr auto;
+      gap: 0.75rem;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+
+    .timeline-row .time {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .timeline-row .label {
+      color: var(--text);
+    }
+
+    .timeline-row .target {
+      color: var(--accent);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .timeline-row.active .label,
+    .timeline-row.active .time {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .timeline-row.active .target {
+      color: var(--ok);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    button,
+    .link-btn {
+      border: none;
+      cursor: pointer;
+      border-radius: 0.75rem;
+      padding: 0.78rem 1rem;
+      font-size: 0.92rem;
+      font-weight: 700;
+      transition: transform 180ms, opacity 180ms, background 180ms;
+      min-height: 44px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    button:hover,
+    .link-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      transform: none;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-danger {
+      background: rgba(221, 105, 116, 0.15);
+      color: var(--danger);
+      border: 1px solid rgba(221, 105, 116, 0.25);
+    }
+
+    .summary-card {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 0.9rem;
+      padding: 1rem;
+      display: none;
+      gap: 1rem;
+    }
+
+    .summary-card.show {
+      display: grid;
+    }
+
+    .summary-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .summary-title h3 {
+      font-size: 1.08rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .summary-title p {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.24rem 0.68rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .status-pill.ok {
+      background: rgba(109, 170, 69, 0.15);
+      color: var(--ok);
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.8rem;
+    }
+
+    .summary-metric {
+      padding: 0.85rem 0.9rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 0.8rem;
+    }
+
+    .summary-metric span {
+      display: block;
+      font-size: 0.74rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 0.3rem;
+    }
+
+    .summary-metric strong {
+      font-size: 1.25rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .summary-actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 640px) {
+      .live-grid,
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .timeline-row {
+        grid-template-columns: 74px 1fr;
+      }
+
+      .timeline-row .target {
+        grid-column: 2;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <nav>
+    <span class="logo">🚴 Vélo LLN</span>
+    <a href="/">Dashboard</a>
+    <a href="/parcours">Parcours 24h</a>
+    <a href="/entrainements" class="active">Entrainements</a>
+
+    <div class="conn-area">
+      <span id="conn-dot"></span>
+      <span id="conn-label">Déconnecté</span>
+      <button class="theme-btn" data-theme-toggle aria-label="Passer en mode clair">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      </button>
+    </div>
+  </nav>
+
+  <main class="main">
+    <section class="panel">
+      <div class="panel-header">Séance</div>
+      <div class="panel-body">
+        <div class="session-title">
+          <h1 id="sessionName">Séance</h1>
+          <p id="sessionMeta"></p>
+        </div>
+
+        <div id="liveSection">
+          <div class="live-grid">
+            <div class="metric-box">
+              <div class="metric-label">Puissance réelle</div>
+              <div class="metric-value" id="livePower">0</div>
+              <div class="metric-unit">W</div>
+            </div>
+
+            <div class="metric-box">
+              <div class="metric-label">Cadence</div>
+              <div class="metric-value" id="liveCadence">0</div>
+              <div class="metric-unit">RPM</div>
+            </div>
+
+            <div class="metric-box">
+              <div class="metric-label">Cible actuelle</div>
+              <div class="metric-value" id="currentTarget">--</div>
+              <div class="metric-unit">W</div>
+            </div>
+
+            <div class="metric-box">
+              <div class="metric-label">Temps restant</div>
+              <div class="metric-value" id="remainingTime">--:--</div>
+              <div class="metric-unit">sur la séance</div>
+            </div>
+          </div>
+
+          <div class="current-step">
+            <h2 id="currentStepTitle">Prêt</h2>
+            <p id="currentStepText">Appuie sur démarrer.</p>
+
+            <div class="progress-wrap">
+              <div class="progress-label">
+                <span id="progressLabelLeft">Progression</span>
+                <span id="progressLabelRight">0%</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-bar-fill" id="progressFill"></div>
+              </div>
+            </div>
+
+            <div class="session-state" id="sessionStateText">En attente.</div>
+
+            <div class="timeline" id="timeline"></div>
+
+            <div class="btn-row">
+              <button class="btn-primary" id="startWorkoutBtn">Démarrer</button>
+              <button class="btn-danger" id="stopWorkoutBtn" disabled>Arrêter</button>
+              <a class="link-btn btn-secondary" href="/entrainements">Retour</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="summary-card" id="summaryCard">
+          <div class="summary-title">
+            <div>
+              <h3 id="summaryName">Récapitulatif</h3>
+              <p id="summaryMeta"></p>
+            </div>
+            <span class="status-pill ok">Terminée</span>
+          </div>
+
+          <div class="summary-grid">
+            <div class="summary-metric">
+              <span>Puissance moyenne</span>
+              <strong id="summaryAvgPower">0 W</strong>
+            </div>
+            <div class="summary-metric">
+              <span>Cadence moyenne</span>
+              <strong id="summaryAvgCadence">0 RPM</strong>
+            </div>
+            <div class="summary-metric">
+              <span>Cible moyenne</span>
+              <strong id="summaryAvgTarget">0 W</strong>
+            </div>
+            <div class="summary-metric">
+              <span>Puissance max</span>
+              <strong id="summaryMaxPower">0 W</strong>
+            </div>
+            <div class="summary-metric">
+              <span>Temps dans la cible</span>
+              <strong id="summaryInTarget">0 %</strong>
+            </div>
+            <div class="summary-metric">
+              <span>Durée réalisée</span>
+              <strong id="summaryCompletedTime">00:00</strong>
+            </div>
+          </div>
+
+          <div class="summary-actions">
+            <a class="link-btn btn-primary" href="/entrainements">Nouvel entrainement</a>
+            <button class="btn-secondary" id="restartSameBtn">Recommencer celui-ci</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const WORKOUT_ID = "{{ workout_id }}";
+
+    const workouts = {
+      "easy-5": {
+        id: "easy-5",
+        name: "Test 5 min",
+        level: "Facile",
+        durationMin: 5,
+        segments: [
+          { label: "Échauffement", durationSec: 60, targetW: 110 },
+          { label: "Bloc 1", durationSec: 60, targetW: 180 },
+          { label: "Récupération", durationSec: 60, targetW: 100 },
+          { label: "Bloc 2", durationSec: 60, targetW: 190 },
+          { label: "Retour au calme", durationSec: 60, targetW: 90 }
+        ]
+      },
+      "mid-10": {
+        id: "mid-10",
+        name: "Test 10 min",
+        level: "Intermédiaire",
+        durationMin: 10,
+        segments: [
+          { label: "Échauffement", durationSec: 120, targetW: 120 },
+          { label: "Bloc 1", durationSec: 180, targetW: 200 },
+          { label: "Récupération", durationSec: 120, targetW: 110 },
+          { label: "Bloc 2", durationSec: 120, targetW: 220 },
+          { label: "Retour au calme", durationSec: 60, targetW: 100 }
+        ]
+      },
+      "hard-15": {
+        id: "hard-15",
+        name: "Test 15 min",
+        level: "Difficile",
+        durationMin: 15,
+        segments: [
+          { label: "Échauffement", durationSec: 180, targetW: 130 },
+          { label: "Bloc 1", durationSec: 180, targetW: 220 },
+          { label: "Récupération", durationSec: 120, targetW: 110 },
+          { label: "Bloc 2", durationSec: 180, targetW: 240 },
+          { label: "Récupération", durationSec: 120, targetW: 120 },
+          { label: "Bloc 3", durationSec: 120, targetW: 260 }
+        ]
+      }
+    };
+
+    const workout = workouts[WORKOUT_ID];
+
+    const socket = io();
+
+    let realtime = {
+      power_w: 0,
+      cadence_rpm: 0,
+      speed_sim_kmh: 0
+    };
+
+    let workoutStartedAt = null;
+    let tickInterval = null;
+    let workoutSamples = [];
+    let workoutRunning = false;
+
+    const sessionNameEl = document.getElementById('sessionName');
+    const sessionMetaEl = document.getElementById('sessionMeta');
+    const timelineEl = document.getElementById('timeline');
+    const currentStepTitleEl = document.getElementById('currentStepTitle');
+    const currentStepTextEl = document.getElementById('currentStepText');
+    const currentTargetEl = document.getElementById('currentTarget');
+    const remainingTimeEl = document.getElementById('remainingTime');
+    const progressFillEl = document.getElementById('progressFill');
+    const progressLabelRightEl = document.getElementById('progressLabelRight');
+    const progressLabelLeftEl = document.getElementById('progressLabelLeft');
+    const sessionStateTextEl = document.getElementById('sessionStateText');
+    const startWorkoutBtn = document.getElementById('startWorkoutBtn');
+    const stopWorkoutBtn = document.getElementById('stopWorkoutBtn');
+    const restartSameBtn = document.getElementById('restartSameBtn');
+    const summaryCardEl = document.getElementById('summaryCard');
+    const liveSectionEl = document.getElementById('liveSection');
+    const livePowerEl = document.getElementById('livePower');
+    const liveCadenceEl = document.getElementById('liveCadence');
+    const connDot = document.getElementById('conn-dot');
+    const connLabel = document.getElementById('conn-label');
+
+    function formatSeconds(sec) {
+      const safe = Math.max(0, Math.floor(sec));
+      const m = Math.floor(safe / 60);
+      const s = safe % 60;
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function average(arr) {
+      if (!arr.length) return 0;
+      return arr.reduce((sum, value) => sum + value, 0) / arr.length;
+    }
+
+    function getWorkoutTotalSec(workout) {
+      return workout.segments.reduce((sum, seg) => sum + seg.durationSec, 0);
+    }
+
+    function getSegmentAtElapsed(workout, elapsedSec) {
+      let cursor = 0;
+      for (let i = 0; i < workout.segments.length; i++) {
+        const seg = workout.segments[i];
+        const end = cursor + seg.durationSec;
+        if (elapsedSec < end) {
+          return {
+            index: i,
+            segment: seg,
+            elapsedInSegment: elapsedSec - cursor,
+            remainingInSegment: end - elapsedSec
+          };
+        }
+        cursor = end;
+      }
+      return null;
+    }
+
+    function renderTimeline(activeIndex = -1) {
+      let elapsed = 0;
+      timelineEl.innerHTML = workout.segments.map((seg, index) => {
+        const start = elapsed;
+        elapsed += seg.durationSec;
+        return `
+          <div class="timeline-row ${index === activeIndex ? 'active' : ''}">
+            <div class="time">${formatSeconds(start)}</div>
+            <div class="label">${seg.label}</div>
+            <div class="target">${seg.targetW} W</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderStaticInfo() {
+      if (!workout) {
+        sessionNameEl.textContent = 'Séance introuvable';
+        sessionMetaEl.textContent = '';
+        startWorkoutBtn.disabled = true;
+        return;
+      }
+
+      sessionNameEl.textContent = workout.name;
+      sessionMetaEl.textContent = `${workout.durationMin} min · ${workout.level}`;
+      renderTimeline(-1);
+    }
+
+    function resetLiveDisplay() {
+      currentStepTitleEl.textContent = 'Prêt';
+      currentStepTextEl.textContent = 'Appuie sur démarrer.';
+      currentTargetEl.textContent = '--';
+      remainingTimeEl.textContent = formatSeconds(getWorkoutTotalSec(workout));
+      progressFillEl.style.width = '0%';
+      progressLabelRightEl.textContent = '0%';
+      progressLabelLeftEl.textContent = `00:00 / ${formatSeconds(getWorkoutTotalSec(workout))}`;
+      sessionStateTextEl.textContent = 'En attente.';
+      renderTimeline(-1);
+      startWorkoutBtn.disabled = false;
+      stopWorkoutBtn.disabled = true;
+    }
+
+    function startWorkout() {
+      if (!workout) return;
+
+      if (tickInterval) {
+        clearInterval(tickInterval);
+      }
+
+      workoutStartedAt = Date.now();
+      workoutSamples = [];
+      workoutRunning = true;
+
+      liveSectionEl.style.display = 'block';
+      summaryCardEl.classList.remove('show');
+
+      startWorkoutBtn.disabled = true;
+      stopWorkoutBtn.disabled = false;
+
+      tickWorkout();
+      tickInterval = setInterval(tickWorkout, 1000);
+    }
+
+    function stopWorkout(manual = true) {
+      if (!workoutRunning) return;
+
+      workoutRunning = false;
+
+      if (tickInterval) {
+        clearInterval(tickInterval);
+        tickInterval = null;
+      }
+
+      showSummary(manual);
+    }
+
+    function finishWorkout() {
+      if (!workoutRunning) return;
+
+      workoutRunning = false;
+
+      if (tickInterval) {
+        clearInterval(tickInterval);
+        tickInterval = null;
+      }
+
+      showSummary(false);
+    }
+
+    function showSummary(manualStop) {
+      const powers = workoutSamples.map(s => s.power);
+      const cadences = workoutSamples.map(s => s.cadence);
+      const targets = workoutSamples.map(s => s.target);
+      const inTargetCount = workoutSamples.filter(s => Math.abs(s.power - s.target) <= 20).length;
+
+      document.getElementById('summaryName').textContent = workout.name + (manualStop ? ' (interrompue)' : '');
+      document.getElementById('summaryMeta').textContent = `${workout.durationMin} min · ${workout.level}`;
+      document.getElementById('summaryAvgPower').textContent = `${Math.round(average(powers))} W`;
+      document.getElementById('summaryAvgCadence').textContent = `${Math.round(average(cadences))} RPM`;
+      document.getElementById('summaryAvgTarget').textContent = `${Math.round(average(targets))} W`;
+      document.getElementById('summaryMaxPower').textContent = `${Math.round(powers.length ? Math.max(...powers) : 0)} W`;
+      document.getElementById('summaryInTarget').textContent = `${workoutSamples.length ? Math.round((inTargetCount / workoutSamples.length) * 100) : 0} %`;
+      document.getElementById('summaryCompletedTime').textContent = formatSeconds(workoutSamples.length);
+
+      liveSectionEl.style.display = 'none';
+      summaryCardEl.classList.add('show');
+
+      startWorkoutBtn.disabled = false;
+      stopWorkoutBtn.disabled = true;
+    }
+
+    function tickWorkout() {
+      if (!workoutRunning) return;
+
+      const totalSec = getWorkoutTotalSec(workout);
+      const elapsedSec = Math.floor((Date.now() - workoutStartedAt) / 1000);
+
+      if (elapsedSec >= totalSec) {
+        finishWorkout();
+        return;
+      }
+
+      const current = getSegmentAtElapsed(workout, elapsedSec);
+      if (!current) {
+        finishWorkout();
+        return;
+      }
+
+      workoutSamples.push({
+        power: Number(realtime.power_w || 0),
+        cadence: Number(realtime.cadence_rpm || 0),
+        target: Number(current.segment.targetW || 0)
+      });
+
+      const remaining = totalSec - elapsedSec;
+      const progress = Math.max(0, Math.min(100, (elapsedSec / totalSec) * 100));
+      const delta = Number(realtime.power_w || 0) - Number(current.segment.targetW || 0);
+
+      currentStepTitleEl.textContent = `${current.segment.label}`;
+      currentStepTextEl.textContent = `Cible ${current.segment.targetW} W · écart ${delta >= 0 ? '+' : ''}${Math.round(delta)} W`;
+      currentTargetEl.textContent = current.segment.targetW;
+      remainingTimeEl.textContent = formatSeconds(remaining);
+      progressFillEl.style.width = `${progress}%`;
+      progressLabelRightEl.textContent = `${Math.round(progress)}%`;
+      progressLabelLeftEl.textContent = `${formatSeconds(elapsedSec)} / ${formatSeconds(totalSec)}`;
+      sessionStateTextEl.textContent = `Segment ${current.index + 1}/${workout.segments.length}`;
+      renderTimeline(current.index);
+    }
+
+    startWorkoutBtn.addEventListener('click', startWorkout);
+    stopWorkoutBtn.addEventListener('click', () => stopWorkout(true));
+    restartSameBtn.addEventListener('click', () => {
+      resetLiveDisplay();
+      liveSectionEl.style.display = 'block';
+      summaryCardEl.classList.remove('show');
+      startWorkout();
+    });
+
+    socket.on('connect', () => {
+      connDot.classList.add('connected');
+      connLabel.textContent = 'Connecté';
+    });
+
+    socket.on('disconnect', () => {
+      connDot.classList.remove('connected');
+      connLabel.textContent = 'Déconnecté';
+    });
+
+    function updateRealtime(data) {
+      realtime = {
+        power_w: Number(data.power_w || 0),
+        cadence_rpm: Number(data.cadence_rpm || 0),
+        speed_sim_kmh: Number(data.speed_sim_kmh || 0)
+      };
+
+      livePowerEl.textContent = Math.round(realtime.power_w);
+      liveCadenceEl.textContent = Math.round(realtime.cadence_rpm);
+    }
+
+    socket.on('realtime_update', data => {
+      updateRealtime(data);
+    });
+
+    socket.on('session_snapshot', state => {
+      if (state.last_realtime) {
+        updateRealtime(state.last_realtime);
+      }
+    });
+
+    (function () {
+      const btn = document.querySelector('[data-theme-toggle]');
+      const html = document.documentElement;
+
+      let storedTheme = null;
+      try {
+        storedTheme = localStorage.getItem('velo-theme');
+      } catch (e) {}
+
+      let dark = storedTheme
+        ? storedTheme === 'dark'
+        : !window.matchMedia('(prefers-color-scheme: light)').matches;
+
+      html.setAttribute('data-theme', dark ? 'dark' : 'light');
+
+      const moonSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+      const sunSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
+
+      btn.innerHTML = dark ? moonSVG : sunSVG;
+      btn.setAttribute('aria-label', dark ? 'Passer en mode clair' : 'Passer en mode sombre');
+
+      btn.addEventListener('click', () => {
+        dark = !dark;
+        html.setAttribute('data-theme', dark ? 'dark' : 'light');
+        btn.innerHTML = dark ? moonSVG : sunSVG;
+        btn.setAttribute('aria-label', dark ? 'Passer en mode clair' : 'Passer en mode sombre');
+        try {
+          localStorage.setItem('velo-theme', dark ? 'dark' : 'light');
+        } catch (e) {}
+      });
+    })();
+
+    renderStaticInfo();
+    resetLiveDisplay();
+  </script>
+</body>
+
+</html>
