@@ -22,6 +22,8 @@ state = {
     "distance_offset_m": 0.0,
     "energy_offset_wh": 0.0,
     "session_running": True,
+    "paused_at_ns": None,
+    "paused_accumulated_ns": 0,
 }
 
 def _build_public_state() -> dict:
@@ -36,16 +38,29 @@ def _build_public_state() -> dict:
     energy_total_wh = last_realtime.get("energy_wh", 0.0) or 0.0
     energy_offset_wh = snapshot.get("energy_offset_wh", 0.0) or 0.0
 
+    paused_accumulated_ns = snapshot.get("paused_accumulated_ns", 0) or 0
+    paused_at_ns = snapshot.get("paused_at_ns")
+    session_running = bool(snapshot.get("session_running", True))
+
+    current_pause_ns = 0
+    if not session_running and paused_at_ns:
+        current_pause_ns = max(0, now_ns - paused_at_ns)
+
+    effective_elapsed_ns = max(
+        0,
+        now_ns - session_started_ns - paused_accumulated_ns - current_pause_ns
+    )
+
     distance_session_m = max(0.0, distance_total_m - distance_offset_m)
     energy_session_wh = max(0.0, energy_total_wh - energy_offset_wh)
-    session_duration_s = max(0, (now_ns - session_started_ns) // 1_000_000_000)
+    session_duration_s = effective_elapsed_ns // 1_000_000_000
 
     last_realtime["energy_session_wh"] = round(energy_session_wh, 2)
 
     snapshot["last_realtime"] = last_realtime
     snapshot["distance_session_m"] = round(distance_session_m, 2)
     snapshot["session_duration_s"] = int(session_duration_s)
-    snapshot["session_running"] = bool(snapshot.get("session_running", True))
+    snapshot["session_running"] = session_running
 
     return snapshot
 
@@ -102,19 +117,30 @@ def reset_dashboard_state() -> dict:
         state["distance_offset_m"] = state.get("distance_sim_m", 0.0) or 0.0
         state["energy_offset_wh"] = current_energy_wh
         state["session_running"] = True
+        state["paused_at_ns"] = None
+        state["paused_accumulated_ns"] = 0
 
         return _build_public_state()
 
 def pause_session() -> dict:
     with lock:
-        state["session_running"] = False
-        state["last_update_ns"] = time_ns()
+        if state.get("session_running", True):
+            state["session_running"] = False
+            state["paused_at_ns"] = time_ns()
+            state["last_update_ns"] = time_ns()
         return _build_public_state()
 
 def resume_session() -> dict:
     with lock:
-        state["session_running"] = True
-        state["last_update_ns"] = time_ns()
+        if not state.get("session_running", True):
+            paused_at_ns = state.get("paused_at_ns")
+            if paused_at_ns:
+                state["paused_accumulated_ns"] += max(0, time_ns() - paused_at_ns)
+
+            state["paused_at_ns"] = None
+            state["session_running"] = True
+            state["last_update_ns"] = time_ns()
+
         return _build_public_state()
 
 def is_session_running() -> bool:

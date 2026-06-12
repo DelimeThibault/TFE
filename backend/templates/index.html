@@ -128,9 +128,7 @@
       transition: color 180ms, border-color 180ms;
     }
 
-    nav a:hover {
-      color: #e0e0e0;
-    }
+    nav a:hover { color: #e0e0e0; }
 
     nav a.active {
       color: #4f98a3;
@@ -154,9 +152,7 @@
       transition: background 300ms;
     }
 
-    #conn-dot.connected {
-      background: #6daa45;
-    }
+    #conn-dot.connected { background: #6daa45; }
 
     .theme-btn {
       background: none;
@@ -170,9 +166,7 @@
       transition: color 180ms;
     }
 
-    .theme-btn:hover {
-      color: #e0e0e0;
-    }
+    .theme-btn:hover { color: #e0e0e0; }
 
     .main {
       padding: 1.25rem;
@@ -252,9 +246,7 @@
     }
 
     .playpause-btn:active,
-    .reset-btn:active {
-      transform: translateY(0);
-    }
+    .reset-btn:active { transform: translateY(0); }
 
     .playpause-btn:disabled,
     .reset-btn:disabled {
@@ -293,13 +285,8 @@
       justify-content: center;
     }
 
-    .metric-cell:nth-child(2n) {
-      border-right: none;
-    }
-
-    .metric-cell:nth-last-child(-n+2) {
-      border-bottom: none;
-    }
+    .metric-cell:nth-child(2n) { border-right: none; }
+    .metric-cell:nth-last-child(-n+2) { border-bottom: none; }
 
     .metric-label {
       font-size: 0.76rem;
@@ -323,9 +310,7 @@
       margin-top: 0.35rem;
     }
 
-    .metric-cell.highlight .metric-value {
-      color: #4f98a3;
-    }
+    .metric-cell.highlight .metric-value { color: #4f98a3; }
 
     .energy-equivalents {
       margin-top: 4px;
@@ -456,13 +441,8 @@
       font-variant-numeric: tabular-nums;
     }
 
-    .equivalent-stats strong {
-      color: #4f98a3;
-    }
-
-    .equivalent-card.done .equivalent-stats strong {
-      color: #8ad85f;
-    }
+    .equivalent-stats strong { color: #4f98a3; }
+    .equivalent-card.done .equivalent-stats strong { color: #8ad85f; }
 
     .equivalent-status {
       font-size: 0.84rem;
@@ -474,9 +454,7 @@
       gap: 0.15rem;
     }
 
-    .equivalent-status span {
-      display: block;
-    }
+    .equivalent-status span { display: block; }
 
     .equivalent-card.done .equivalent-status {
       color: #8ad85f;
@@ -484,15 +462,11 @@
     }
 
     @media (max-width: 980px) {
-      .equivalents-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
+      .equivalents-grid { grid-template-columns: repeat(2, 1fr); }
     }
 
     @media (max-width: 700px) {
-      .metrics-grid {
-        grid-template-columns: 1fr;
-      }
+      .metrics-grid { grid-template-columns: 1fr; }
 
       .metric-cell {
         border-right: none !important;
@@ -500,26 +474,17 @@
         min-height: 125px;
       }
 
-      .metric-cell:last-child {
-        border-bottom: none !important;
-      }
+      .metric-cell:last-child { border-bottom: none !important; }
+      .metric-value { font-size: 2.2rem; }
 
-      .metric-value {
-        font-size: 2.2rem;
-      }
-
-      .section-head {
-        flex-direction: column;
-      }
+      .section-head { flex-direction: column; }
 
       .energy-total-box {
         width: 100%;
         text-align: left;
       }
 
-      .equivalents-grid {
-        grid-template-columns: 1fr;
-      }
+      .equivalents-grid { grid-template-columns: 1fr; }
 
       .panel-header {
         flex-direction: column;
@@ -556,10 +521,9 @@
             id="pausePlayBtn"
             class="playpause-btn"
             type="button"
-            onclick="togglePausePlay()"
             aria-pressed="false"
-            aria-label="Mettre en pause la session">
-            Pause
+            aria-label="Démarrer la session">
+            ▶ Play
           </button>
           <button id="resetSessionBtn" class="reset-btn" type="button">Reset session</button>
         </div>
@@ -612,7 +576,6 @@
           <strong id="energySessionValue">0.0 Wh</strong>
         </div>
       </div>
-
       <div class="equivalents-grid" id="equivalentsGrid"></div>
     </section>
   </div>
@@ -628,9 +591,14 @@
       { key: "washer", name: "Machine à laver", icon: "🧺", targetWh: 900 }
     ];
 
-    let currentPowerW = 0;
-    let isSessionPaused = false;
+    let sessionState = 'stopped';
     let isActionLoading = false;
+    let currentPowerW = 0;
+
+    let chronoBaseSeconds = 0;
+    let chronoServerSyncMs = 0;
+    let chronoRunning = false;
+    let chronoInterval = null;
 
     function formatWh(value) {
       return `${Number(value || 0).toFixed(1)} Wh`;
@@ -662,15 +630,182 @@
       return (remainingWh / powerW) * 60;
     }
 
+    function getDisplayedChronoSeconds() {
+      if (!chronoRunning) {
+        return chronoBaseSeconds;
+      }
+
+      const elapsedSinceSync = Math.floor((Date.now() - chronoServerSyncMs) / 1000);
+      return Math.max(0, chronoBaseSeconds + elapsedSinceSync);
+    }
+
+    function renderChrono() {
+      document.getElementById('duration').textContent =
+        formatSessionDuration(getDisplayedChronoSeconds());
+    }
+
+    function startChronoTicker() {
+      if (chronoInterval) return;
+      chronoInterval = setInterval(renderChrono, 250);
+    }
+
+    function stopChronoTicker() {
+      if (!chronoInterval) return;
+      clearInterval(chronoInterval);
+      chronoInterval = null;
+    }
+
+    function syncChrono(serverSeconds, running) {
+      chronoBaseSeconds = Math.max(0, Math.floor(serverSeconds || 0));
+      chronoServerSyncMs = Date.now();
+      chronoRunning = Boolean(running);
+
+      renderChrono();
+
+      if (chronoRunning) {
+        startChronoTicker();
+      } else {
+        stopChronoTicker();
+      }
+    }
+
+    function resetChrono() {
+      chronoBaseSeconds = 0;
+      chronoServerSyncMs = Date.now();
+      chronoRunning = false;
+      stopChronoTicker();
+      renderChrono();
+    }
+
+    function setSessionStateUI(state) {
+      sessionState = state;
+      const btn = document.getElementById('pausePlayBtn');
+      if (!btn) return;
+
+      btn.classList.remove('paused');
+
+      if (state === 'stopped') {
+        btn.textContent = '▶ Play';
+        btn.setAttribute('aria-label', 'Démarrer la session');
+        btn.setAttribute('aria-pressed', 'false');
+      } else if (state === 'running') {
+        btn.textContent = '⏸ Pause';
+        btn.classList.add('paused');
+        btn.setAttribute('aria-label', 'Mettre en pause la session');
+        btn.setAttribute('aria-pressed', 'true');
+      } else if (state === 'paused') {
+        btn.textContent = '▶ Reprendre';
+        btn.setAttribute('aria-label', 'Reprendre la session');
+        btn.setAttribute('aria-pressed', 'false');
+      }
+    }
+
+    function setButtonsLoading(loading) {
+      isActionLoading = Boolean(loading);
+      const pauseBtn = document.getElementById('pausePlayBtn');
+      const resetBtn = document.getElementById('resetSessionBtn');
+      if (pauseBtn) pauseBtn.disabled = isActionLoading;
+      if (resetBtn) resetBtn.disabled = isActionLoading;
+    }
+
+    async function startSession() {
+      const response = await fetch('/api/session/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        throw new Error('Impossible de démarrer la session');
+      }
+
+      return response.json();
+    }
+
+    async function pauseSession() {
+      const response = await fetch('/api/session/pause', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        throw new Error('Impossible de mettre en pause la session');
+      }
+
+      return response.json();
+    }
+
+    async function resumeSession() {
+      const response = await fetch('/api/session/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        throw new Error('Impossible de reprendre la session');
+      }
+
+      return response.json();
+    }
+
+    async function fetchInitialSessionState() {
+      const response = await fetch('/api/session');
+      if (!response.ok) {
+        throw new Error('Impossible de charger l’état initial de session');
+      }
+      return response.json();
+    }
+
+    async function togglePausePlay() {
+      if (isActionLoading) return;
+
+      setButtonsLoading(true);
+      try {
+        if (sessionState === 'stopped') {
+          await startSession();
+        } else if (sessionState === 'running') {
+          await pauseSession();
+        } else if (sessionState === 'paused') {
+          await resumeSession();
+        }
+      } catch (error) {
+        console.error('Erreur pause/play dashboard:', error);
+      } finally {
+        setButtonsLoading(false);
+      }
+    }
+
+    async function resetSession() {
+      if (isActionLoading) return;
+
+      setButtonsLoading(true);
+      try {
+        const response = await fetch('/api/dashboard/reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) {
+          throw new Error('Impossible de reset la session');
+        }
+
+        resetChrono();
+        renderEnergyEquivalents(0, 0);
+        document.getElementById('distance').textContent = '0.00';
+        setSessionStateUI('stopped');
+      } catch (error) {
+        console.error('Erreur reset dashboard:', error);
+      } finally {
+        setButtonsLoading(false);
+      }
+    }
+
     function renderEnergyEquivalents(energyWh = 0, powerW = 0) {
       const totalEl = document.getElementById('energySessionValue');
       const gridEl = document.getElementById('equivalentsGrid');
-
       if (!totalEl || !gridEl) return;
 
       const safeEnergy = Number(energyWh || 0);
       const safePower = Number(powerW || 0);
-
       totalEl.textContent = formatWh(safeEnergy);
 
       gridEl.innerHTML = ENERGY_EQUIVALENTS.map((item) => {
@@ -685,58 +820,21 @@
               <div class="equivalent-icon">${item.icon}</div>
               <h3>${item.name}</h3>
             </div>
-
             <div class="equivalent-meta">${formatWh(item.targetWh)}</div>
-
             <div class="equivalent-progress">
               <div class="equivalent-progress-bar" style="width: ${progress}%;"></div>
             </div>
-
             <div class="equivalent-stats">
               <span>${formatWh(Math.min(safeEnergy, item.targetWh))} / ${formatWh(item.targetWh)}</span>
               <strong>${Math.round(progress)}%</strong>
             </div>
-
             <div class="equivalent-status">
               ${done
                 ? 'Objectif atteint'
                 : `<span>Encore ${formatWh(remainingWh)}</span><span>~ ${formatMinutes(remainingMinutes)} au rythme actuel</span>`}
             </div>
-          </article>
-        `;
+          </article>`;
       }).join('');
-    }
-
-    function updateSessionMetricsUI(distanceSessionM = 0, durationSessionS = 0) {
-      document.getElementById('distance').textContent = (Number(distanceSessionM || 0) / 1000).toFixed(2);
-      document.getElementById('duration').textContent = formatSessionDuration(durationSessionS);
-    }
-
-    function setPausePlayUI(paused) {
-      isSessionPaused = Boolean(paused);
-      const btn = document.getElementById('pausePlayBtn');
-      if (!btn) return;
-
-      if (isSessionPaused) {
-        btn.textContent = 'Play';
-        btn.classList.add('paused');
-        btn.setAttribute('aria-pressed', 'true');
-        btn.setAttribute('aria-label', 'Reprendre la session');
-      } else {
-        btn.textContent = 'Pause';
-        btn.classList.remove('paused');
-        btn.setAttribute('aria-pressed', 'false');
-        btn.setAttribute('aria-label', 'Mettre en pause la session');
-      }
-    }
-
-    function setButtonsLoading(loading) {
-      isActionLoading = Boolean(loading);
-      const pauseBtn = document.getElementById('pausePlayBtn');
-      const resetBtn = document.getElementById('resetSessionBtn');
-
-      if (pauseBtn) pauseBtn.disabled = isActionLoading;
-      if (resetBtn) resetBtn.disabled = isActionLoading;
     }
 
     function updateMetrics(data, fullState = null) {
@@ -745,86 +843,37 @@
       const powerValue = data?.power_w != null ? Number(data.power_w) : 0;
       const powerDisplay = data?.power_w != null ? Math.round(data.power_w) : '--';
       const resistanceDisplay = data?.resistance_v != null ? Number(data.resistance_v).toFixed(2) : '--';
-
       const energySessionWh = fullState?.last_realtime?.energy_session_wh ?? data?.energy_session_wh ?? 0;
-      const distanceSessionM = fullState?.distance_session_m ?? 0;
-      const durationSessionS = fullState?.session_duration_s ?? 0;
+      const distanceSessionM = fullState?.distance_session_m ?? data?.distance_session_m ?? 0;
 
       document.getElementById('cadence').textContent = cadence;
       document.getElementById('speed').textContent = speedDisplay;
       document.getElementById('power').textContent = powerDisplay;
       document.getElementById('resistance').textContent = resistanceDisplay;
+      document.getElementById('distance').textContent = (Number(distanceSessionM || 0) / 1000).toFixed(2);
 
       currentPowerW = powerValue;
-
-      updateSessionMetricsUI(distanceSessionM, durationSessionS);
       renderEnergyEquivalents(Number(energySessionWh || 0), currentPowerW);
 
-      const pausedFromState =
-        fullState?.is_paused ??
-        fullState?.session_paused ??
-        data?.is_paused ??
-        data?.session_paused;
+      if (fullState?.session_duration_s != null) {
+        const isRunning = Boolean(fullState?.session_running);
+        syncChrono(fullState.session_duration_s, isRunning);
 
-      if (typeof pausedFromState === 'boolean') {
-        setPausePlayUI(pausedFromState);
-      }
-    }
-
-    async function pauseSession() {
-      await fetch('/api/session/pause', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    async function resumeSession() {
-      await fetch('/api/session/resume', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    async function togglePausePlay() {
-      if (isActionLoading) return;
-
-      setButtonsLoading(true);
-      try {
-        if (isSessionPaused) {
-          await resumeSession();
-          setPausePlayUI(false);
+        if (fullState.session_duration_s <= 0 && isRunning) {
+          setSessionStateUI('running');
+        } else if (fullState.session_duration_s <= 0 && !isRunning) {
+          setSessionStateUI('stopped');
+        } else if (isRunning) {
+          setSessionStateUI('running');
         } else {
-          await pauseSession();
-          setPausePlayUI(true);
+          setSessionStateUI('paused');
         }
-      } catch (error) {
-        console.error('Erreur pause/play dashboard:', error);
-      } finally {
-        setButtonsLoading(false);
-      }
-    }
-
-    async function resetSession() {
-      if (isActionLoading) return;
-
-      setButtonsLoading(true);
-      try {
-        await fetch('/api/dashboard/reset', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        });
-        setPausePlayUI(false);
-      } catch (error) {
-        console.error('Erreur reset dashboard:', error);
-      } finally {
-        setButtonsLoading(false);
       }
     }
 
     function applyTheme(theme) {
       const html = document.documentElement;
       const btn = document.querySelector('[data-theme-toggle]');
-
       html.setAttribute('data-theme', theme);
 
       const moonSVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
@@ -840,24 +889,17 @@
       let savedTheme = 'light';
       try {
         savedTheme = localStorage.getItem(THEME_KEY) || 'light';
-      } catch (e) {
-        savedTheme = 'light';
-      }
+      } catch (e) {}
       applyTheme(savedTheme);
     }
 
     function toggleTheme() {
-      const html = document.documentElement;
-      const currentTheme = html.getAttribute('data-theme') || 'light';
-      const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
-
-      applyTheme(nextTheme);
-
+      const current = document.documentElement.getAttribute('data-theme') || 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
       try {
-        localStorage.setItem(THEME_KEY, nextTheme);
-      } catch (e) {
-        console.warn('Impossible de sauvegarder le thème', e);
-      }
+        localStorage.setItem(THEME_KEY, next);
+      } catch (e) {}
     }
 
     socket.on('connect', () => {
@@ -870,7 +912,8 @@
       document.getElementById('conn-label').textContent = 'Déconnecté';
     });
 
-    socket.on('realtime_update', () => {
+    socket.on('realtime_update', (data) => {
+      updateMetrics(data, null);
     });
 
     socket.on('session_snapshot', (state) => {
@@ -881,7 +924,8 @@
     socket.on('dashboard_reset', (state) => {
       const realtime = state?.last_realtime || {};
       updateMetrics(realtime, state);
-      setPausePlayUI(false);
+      resetChrono();
+      setSessionStateUI('stopped');
     });
 
     document.getElementById('pausePlayBtn').addEventListener('click', togglePausePlay);
@@ -889,9 +933,18 @@
     document.querySelector('[data-theme-toggle]').addEventListener('click', toggleTheme);
 
     initTheme();
-    setPausePlayUI(false);
-    updateSessionMetricsUI(0, 0);
     renderEnergyEquivalents(0, 0);
+    resetChrono();
+    setSessionStateUI('stopped');
+
+    fetchInitialSessionState()
+      .then((state) => {
+        const realtime = state?.last_realtime || {};
+        updateMetrics(realtime, state);
+      })
+      .catch((error) => {
+        console.error('Erreur chargement état initial:', error);
+      });
   </script>
 </body>
 
