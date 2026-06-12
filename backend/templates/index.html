@@ -556,6 +556,7 @@
             id="pausePlayBtn"
             class="playpause-btn"
             type="button"
+            onclick="togglePausePlay()"
             aria-pressed="false"
             aria-label="Mettre en pause la session">
             Pause
@@ -771,14 +772,14 @@
     }
 
     async function pauseSession() {
-      await fetch('/api/dashboard/pause', {
+      await fetch('/api/session/pause', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
     async function resumeSession() {
-      await fetch('/api/dashboard/resume', {
+      await fetch('/api/session/resume', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });

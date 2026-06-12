@@ -546,7 +546,14 @@
 
         fetch('/api/parcours/status')
             .then(r => r.json())
-            .then(data => setParcoursBtns(data.running))
+            .then(data => {
+                if (pageJustLoaded && data.running) {
+                    pageJustLoaded = false;
+                    return;
+                }
+                pageJustLoaded = false;
+                setParcoursBtns(data.running);
+            })
             .catch(e => console.error('Erreur statut parcours:', e));
 
         const socket = io();

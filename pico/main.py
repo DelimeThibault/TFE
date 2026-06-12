@@ -53,7 +53,7 @@ lcd = I2cLcd(i2c, I2C_ADDR, I2C_NUM_ROWS, I2C_NUM_COLS)
 # AFFICHEURS 7 SEGMENTS
 # =============================================================
 p_out_num_disp = tm1637.TM1637(clk=Pin(2, Pin.OUT), dio=Pin(3, Pin.OUT))
-p_in_num_disp = tm1637.TM1637(clk=Pin(0, Pin.OUT), dio=Pin(1, Pin.OUT))
+p_in_num_disp = tm1637.TM1637(clk=Pin(0, Pin.OUT), dio=Pin(3, Pin.OUT))
 energy_num_disp = tm1637.TM1637(clk=Pin(1, Pin.OUT), dio=Pin(3, Pin.OUT))
 p_out_num_disp.show("out ")
 p_in_num_disp.show("in  ")
