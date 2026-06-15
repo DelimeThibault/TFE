@@ -81,6 +81,7 @@ class SlopeController:
         self.total_dist = self.points[-1]["dist_m"]
         self._running = False
         self.parcours_actif = False
+        self._parcours_offset_m = None
         # Callback facultatif → appelé à chaque cycle pour émettre via Socket.IO
         self._emit = emit_callback or (lambda *a: None)
         print(
@@ -96,6 +97,8 @@ class SlopeController:
         self._running = False
 
     def start_parcours(self):
+        if self._parcours_offset_m is None:
+            self._parcours_offset_m = get_state().get("distance_sim_m", 0.0) or 0.0
         self.parcours_actif = True
         print("[SlopeController] Parcours démarré")
 
@@ -104,9 +107,7 @@ class SlopeController:
         print("[SlopeController] Parcours arrêté")
 
     def reset_parcours(self):
-        from gateway.session_store import reset_distance
-
-        reset_distance()
+        self._parcours_offset_m = get_state().get("distance_sim_m", 0.0) or 0.0
         print("[SlopeController] Parcours réinitialisé")
 
     def get_route_data(self):
@@ -124,11 +125,13 @@ class SlopeController:
     def _loop(self):
         while self._running:
             try:
-                dist_m = get_state().get("distance_sim_m", 0.0)
+                raw_dist_m = get_state().get("distance_sim_m", 0.0) or 0.0
+                offset_m = self._parcours_offset_m or 0.0
+                dist_m = max(0.0, raw_dist_m - offset_m)
                 slope, lat, lon, ele = get_slope_at_distance(self.points, dist_m)
 
                 if self.parcours_actif:
-                    update_slope(slope, lat, lon, ele)
+                    update_slope(dist_m, slope, lat, lon, ele)
                     publish_slope(slope)
 
                 # Émet toujours la position (même en pause) pour que le front

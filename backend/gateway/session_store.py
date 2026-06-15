@@ -12,6 +12,7 @@ state = {
     # données brutes / système
     "distance_sim_m": 0.0,
     "slope_pct": 0.0,
+    "parcours_distance_m": 0.0,
     "current_lat": 50.66609,
     "current_lon": 4.61852,
     "current_ele": 140.0,
@@ -33,6 +34,7 @@ def _build_public_state() -> dict:
     session_started_ns = snapshot.get("session_started_ns")
     distance_total_m = snapshot.get("distance_sim_m", 0.0) or 0.0
     distance_offset_m = snapshot.get("distance_offset_m", 0.0) or 0.0
+    parcours_distance_m = snapshot.get("parcours_distance_m", 0.0) or 0.0
 
     last_realtime = dict(snapshot.get("last_realtime") or {})
     energy_session_wh = snapshot.get("energy_session_wh", 0.0) or 0.0
@@ -65,6 +67,7 @@ def _build_public_state() -> dict:
 
     snapshot["last_realtime"] = last_realtime
     snapshot["distance_session_m"] = round(distance_session_m, 2)
+    snapshot["parcours_distance_m"] = round(parcours_distance_m, 2)
     snapshot["session_duration_s"] = int(session_duration_s)
     snapshot["session_running"] = session_running
 
@@ -112,8 +115,9 @@ def get_state() -> dict:
     with lock:
         return _build_public_state()
 
-def update_slope(slope_pct: float, lat: float, lon: float, ele: float) -> None:
+def update_slope(dist_m: float, slope_pct: float, lat: float, lon: float, ele: float) -> None:
     with lock:
+        state["parcours_distance_m"] = max(0.0, dist_m)
         state["slope_pct"] = slope_pct
         state["current_lat"] = lat
         state["current_lon"] = lon
@@ -122,6 +126,7 @@ def update_slope(slope_pct: float, lat: float, lon: float, ele: float) -> None:
 def reset_distance() -> None:
     with lock:
         state["distance_sim_m"] = 0.0
+        state["parcours_distance_m"] = 0.0
         state["current_lat"] = 50.66609
         state["current_lon"] = 4.61852
         state["current_ele"] = 140.0
