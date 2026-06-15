@@ -144,8 +144,16 @@ MAX_SUM_ERRORS = (65000 / ki) / F_ECH_LS
 
 # Filtre EMA sur la cadence — lisse les oscillations dues aux
 # irrégularités mécaniques du pédalage (un seul aimant sur le pédalier).
-EMA_CADENCE = 0.60
+EMA_CADENCE = 0.80
 _ema_cadence = 0.0
+
+
+def median_us(values):
+    if not values:
+        return 0
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    return ordered[middle]
 
 
 # =============================================================
@@ -233,6 +241,7 @@ T_rotation = 0
 speed = 0
 speed_rpm = 0
 wheel_circ = 1.85
+cadence_periods = []
 
 
 i_sum = 0
@@ -270,7 +279,7 @@ def ls_interrupt(timer):
     global last_time, T_rotation, speed, speed_rpm
     global prev_res_pot, sum_of_errors, duty, set_point_ok, set_point, i_rms
     global speed_sim, slope_offset
-    global _ema_cadence
+    global _ema_cadence, cadence_periods
 
     dt = 1.0 / F_ECH_LS
 
@@ -282,11 +291,13 @@ def ls_interrupt(timer):
         speed_rpm = 0
         p_in = 0
         _ema_cadence = 0.0
-    elif T_rotation > 0 and time_since_last_reed < T_rotation * 2:
-        raw_rpm = 60.0 * 1e6 / T_rotation
+        cadence_periods = []
+    elif cadence_periods and time_since_last_reed < median_us(cadence_periods) * 2:
+        filtered_rotation = median_us(cadence_periods)
+        raw_rpm = 60.0 * 1e6 / filtered_rotation
         _ema_cadence = EMA_CADENCE * raw_rpm + (1.0 - EMA_CADENCE) * _ema_cadence
         speed_rpm = _ema_cadence
-        speed = wheel_circ / (T_rotation / 1e6) * 3.6
+        speed = wheel_circ / (filtered_rotation / 1e6) * 3.6
         p_in = power_model.compute(prev_res_pot, speed_rpm)
 
     # --- 2. Courant / Energie ---
@@ -397,7 +408,7 @@ def ls_interrupt(timer):
 # REED SWITCH — détection cadence pédalier
 # =============================================================
 def reed_switch_callback(pin):
-    global last_time, T_rotation
+    global last_time, T_rotation, cadence_periods
     current_time_cb = time.ticks_us()
 
     delta = time.ticks_diff(current_time_cb, last_time)
@@ -410,6 +421,9 @@ def reed_switch_callback(pin):
         return
 
     T_rotation = delta
+    cadence_periods.append(delta)
+    if len(cadence_periods) > 3:
+        cadence_periods.pop(0)
     last_time = current_time_cb
 
 
