@@ -312,6 +312,10 @@
 
     .metric-cell.highlight .metric-value { color: #4f98a3; }
 
+    #resistance {
+      font-size: 2.2rem;
+    }
+
     .energy-equivalents {
       margin-top: 4px;
       padding: 1.25rem;
@@ -561,9 +565,9 @@
         </div>
 
         <div class="metric-cell">
-          <div class="metric-label">Résistance</div>
+          <div class="metric-label">Vitesse</div>
           <div class="metric-value" id="resistance">--</div>
-          <div class="metric-unit">V</div>
+          <div class="metric-unit">niveau / 8</div>
         </div>
       </div>
     </div>
@@ -630,6 +634,19 @@
     function getRemainingTimeMinutes(remainingWh, powerW) {
       if (!powerW || powerW <= 0) return Infinity;
       return (remainingWh / powerW) * 60;
+    }
+
+    function formatResistanceLevel(resistanceV) {
+      if (resistanceV == null || Number.isNaN(Number(resistanceV))) return '--';
+
+      const minV = 0.4;
+      const maxV = 1.1;
+      const steps = 8;
+      const value = Number(resistanceV);
+      const index = Math.round((value - minV) / 0.1) + 1;
+      const clamped = Math.min(steps, Math.max(1, index));
+
+      return `Vitesse ${clamped} / ${steps}`;
     }
 
     function getDisplayedChronoSeconds() {
@@ -857,7 +874,7 @@
       const speedDisplay = liveData?.speed_sim_kmh != null ? Number(liveData.speed_sim_kmh).toFixed(1) : '--';
       const powerValue = liveData?.power_w != null ? Number(liveData.power_w) : 0;
       const powerDisplay = liveData?.power_w != null ? Math.round(liveData.power_w) : '--';
-      const resistanceDisplay = liveData?.resistance_v != null ? Number(liveData.resistance_v).toFixed(2) : '--';
+      const resistanceDisplay = shouldShowValues ? formatResistanceLevel(liveData?.resistance_v) : '--';
       const energySessionWh = shouldShowValues ? (fullState?.energy_session_wh ?? fullState?.last_realtime?.energy_session_wh ?? liveData?.energy_session_wh ?? 0) : 0;
       const distanceSessionM = shouldShowValues ? (fullState?.distance_session_m ?? liveData?.distance_session_m ?? 0) : 0;
 
