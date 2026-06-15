@@ -912,16 +912,25 @@
       document.getElementById('conn-label').textContent = 'Déconnecté';
     });
 
+    let lastFullState = null;
+
     socket.on('realtime_update', (data) => {
-      updateMetrics(data, null);
+      if (lastFullState) {
+        lastFullState.last_realtime = { ...lastFullState.last_realtime, ...data };
+        updateMetrics(data, lastFullState);
+      } else {
+        updateMetrics(data, null);
+      }
     });
 
     socket.on('session_snapshot', (state) => {
+      lastFullState = state;
       const realtime = state?.last_realtime || {};
       updateMetrics(realtime, state);
     });
 
     socket.on('dashboard_reset', (state) => {
+      lastFullState = state;
       const realtime = state?.last_realtime || {};
       updateMetrics(realtime, state);
       resetChrono();
