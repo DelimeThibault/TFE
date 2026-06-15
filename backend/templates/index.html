@@ -843,7 +843,7 @@
       const powerValue = data?.power_w != null ? Number(data.power_w) : 0;
       const powerDisplay = data?.power_w != null ? Math.round(data.power_w) : '--';
       const resistanceDisplay = data?.resistance_v != null ? Number(data.resistance_v).toFixed(2) : '--';
-      const energySessionWh = fullState?.last_realtime?.energy_session_wh ?? data?.energy_session_wh ?? 0;
+      const energySessionWh = fullState?.energy_session_wh ?? fullState?.last_realtime?.energy_session_wh ?? data?.energy_session_wh ?? 0;
       const distanceSessionM = fullState?.distance_session_m ?? data?.distance_session_m ?? 0;
 
       document.getElementById('cadence').textContent = cadence;

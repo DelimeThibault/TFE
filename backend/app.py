@@ -181,10 +181,9 @@ def serve_tile(z, x, y):
 # ── Handler MQTT → Socket.IO ───────────────────────────────────────────────────
 
 def forward_to_ui(event_name, payload, state):
-    # Injecte energy_session_wh dans le payload realtime avant de l'émettre
     if event_name == "realtime_update" and state.get("last_realtime"):
         payload = dict(payload)
-        payload["energy_session_wh"] = state["last_realtime"].get("energy_session_wh", 0)
+        payload["energy_session_wh"] = state.get("energy_session_wh", 0)
         payload["distance_session_m"] = state.get("distance_session_m", 0)
         payload["session_duration_s"] = state.get("session_duration_s", 0)
     socketio.emit(event_name, payload)
