@@ -269,7 +269,7 @@
         <div class="panel">
             <div class="panel-header">
                 Carte — Position en temps réel
-                <span class="badge" id="dist-badge">0.00 km</span>
+                <span class="badge" id="dist-badge">-- km</span>
             </div>
             <div id="map"></div>
         </div>
@@ -278,7 +278,7 @@
             <div class="panel-header">
                 Profil altimétrique
                 <span style="color:#e0e0e0; font-size:0.8rem;">
-                    Alt : <span id="ele-display">— m</span>
+                    Alt : <span id="ele-display">-- m</span>
                 </span>
             </div>
             <div class="chart-wrap">
@@ -289,27 +289,27 @@
         <div class="metrics">
             <div class="metric-card highlight">
                 <span class="metric-label">Vitesse sim</span>
-                <span class="metric-value" id="m-speed">0.0</span>
+                <span class="metric-value" id="m-speed">--</span>
                 <span class="metric-unit">km/h</span>
             </div>
             <div class="metric-card">
                 <span class="metric-label">Cadence</span>
-                <span class="metric-value" id="m-cadence">0</span>
+                <span class="metric-value" id="m-cadence">--</span>
                 <span class="metric-unit">RPM</span>
             </div>
             <div class="metric-card">
                 <span class="metric-label">Puissance</span>
-                <span class="metric-value" id="m-power">0</span>
+                <span class="metric-value" id="m-power">--</span>
                 <span class="metric-unit">W</span>
             </div>
             <div class="metric-card" id="slope-card">
                 <span class="metric-label">Pente</span>
-                <span class="metric-value" id="m-slope">0.0</span>
+                <span class="metric-value" id="m-slope">--</span>
                 <span class="metric-unit">%</span>
             </div>
             <div class="metric-card">
                 <span class="metric-label">Distance</span>
-                <span class="metric-value" id="m-dist">0.00</span>
+                <span class="metric-value" id="m-dist">--</span>
                 <span class="metric-unit">km</span>
             </div>
             <div class="metric-card" style="justify-content: center; gap: 0.5rem;">
@@ -349,6 +349,7 @@
         let totalDist = 4009.73;
         let posMarker = null;
         let parcoursRunning = false;
+        let parcoursHasStarted = false;
 
         const riderIcon = L.divIcon({
             html: `<div style="width:16px;height:16px;background:#4f98a3;border:3px solid #fff;border-radius:50%;box-shadow:0 0 8px rgba(79,152,163,0.8);"></div>`,
@@ -494,6 +495,38 @@
             updatePosition(0, start.lat, start.lon, start.ele);
         }
 
+        function clearParcoursDisplay() {
+            document.getElementById('m-speed').textContent = '--';
+            document.getElementById('m-cadence').textContent = '--';
+            document.getElementById('m-power').textContent = '--';
+            document.getElementById('m-slope').textContent = '--';
+            document.getElementById('m-dist').textContent = '--';
+            document.getElementById('dist-badge').textContent = '-- km';
+            document.getElementById('ele-display').textContent = '-- m';
+        }
+
+        function renderParcoursSnapshot(state) {
+            if (!state) return;
+
+            const routeDistance = state.parcours_distance_m ?? 0;
+            const realtime = state.last_realtime || {};
+
+            document.getElementById('m-speed').textContent = realtime.speed_sim_kmh != null ? Number(realtime.speed_sim_kmh).toFixed(1) : '--';
+            document.getElementById('m-cadence').textContent = realtime.cadence_rpm != null ? Math.round(realtime.cadence_rpm) : '--';
+            document.getElementById('m-power').textContent = realtime.power_w != null ? Math.round(realtime.power_w) : '--';
+            document.getElementById('m-slope').textContent = state.slope_pct != null ? Number(state.slope_pct).toFixed(1) : '--';
+            document.getElementById('m-dist').textContent = (routeDistance / 1000).toFixed(2);
+            document.getElementById('dist-badge').textContent = (routeDistance / 1000).toFixed(2) + ' km / ' + (totalDist / 1000).toFixed(2) + ' km';
+
+            if (state.current_ele != null) {
+                document.getElementById('ele-display').textContent = state.current_ele + ' m';
+            }
+
+            if (state.current_lat && state.current_lon) {
+                updatePosition(routeDistance, state.current_lat, state.current_lon, state.current_ele ?? 0);
+            }
+        }
+
         function updateMetrics(data) {
             document.getElementById('m-speed').textContent = (data.speed_sim_kmh ?? 0).toFixed(1);
             document.getElementById('m-cadence').textContent = Math.round(data.cadence_rpm ?? 0);
@@ -533,6 +566,7 @@
                 .then(r => {
                     if (r.ok) {
                         parcoursRunning = true;
+                        parcoursHasStarted = true;
                         setParcoursBtns(true);
                     }
                 })
@@ -556,10 +590,9 @@
                 .then(r => {
                     if (!r.ok) return;
                     parcoursRunning = false;
+                    parcoursHasStarted = false;
                     setParcoursBtns(false);
-                    document.getElementById('m-dist').textContent = '0.00';
-                    document.getElementById('dist-badge').textContent = '0.00 km / ' + (totalDist / 1000).toFixed(2) + ' km';
-                    resetPositionView();
+                    clearParcoursDisplay();
                 })
                 .catch(e => console.error('Erreur reset parcours:', e));
         }
@@ -568,12 +601,19 @@
             .then(r => r.json())
             .then(data => {
                 parcoursRunning = Boolean(data.running);
+                parcoursHasStarted = parcoursRunning || ((data.distance_m ?? 0) > 0);
                 if (pageJustLoaded && data.running) {
                     pageJustLoaded = false;
                     return;
                 }
                 pageJustLoaded = false;
                 setParcoursBtns(data.running);
+
+                if (parcoursHasStarted) {
+                    renderParcoursSnapshot(data);
+                } else {
+                    clearParcoursDisplay();
+                }
             })
             .catch(e => console.error('Erreur statut parcours:', e));
 
@@ -590,25 +630,39 @@
         });
 
         socket.on('realtime_update', data => {
-            updateMetrics(data);
-            const routeDistance = data.parcours_distance_m ?? 0;
-            document.getElementById('m-dist').textContent = (parcoursRunning ? (routeDistance / 1000).toFixed(2) : '0.00');
+            if (!parcoursRunning) return;
 
+            const routeDistance = data.parcours_distance_m ?? 0;
             const slope = data.slope_pct ?? 0;
+
+            updateMetrics(data);
+            document.getElementById('m-dist').textContent = (routeDistance / 1000).toFixed(2);
             document.getElementById('m-slope').textContent = slope.toFixed(1);
             document.getElementById('slope-card').className =
                 'metric-card' + (slope > 4 ? ' danger' : slope > 1.5 ? ' warn' : ' highlight');
 
-            if (parcoursRunning && data.current_lat && data.current_lon) {
+            if (data.current_lat && data.current_lon) {
                 updatePosition(routeDistance, data.current_lat, data.current_lon, data.current_ele ?? 0);
             }
         });
 
         socket.on('session_snapshot', state => {
-            if (state.last_realtime) updateMetrics(state.last_realtime);
+            parcoursRunning = Boolean(state.running ?? parcoursRunning);
+            if (!parcoursHasStarted && (parcoursRunning || (state.parcours_distance_m ?? 0) > 0)) {
+                parcoursHasStarted = true;
+            }
+
+            if (!parcoursHasStarted) {
+                clearParcoursDisplay();
+                setParcoursBtns(false);
+                return;
+            }
+
+            if (parcoursRunning && state.last_realtime) updateMetrics(state.last_realtime);
             const routeDistance = state.parcours_distance_m ?? 0;
-            document.getElementById('m-dist').textContent = (parcoursRunning ? (routeDistance / 1000).toFixed(2) : '0.00');
             document.getElementById('m-slope').textContent = (state.slope_pct ?? 0).toFixed(1);
+            document.getElementById('m-dist').textContent = (routeDistance / 1000).toFixed(2);
+            document.getElementById('dist-badge').textContent = (routeDistance / 1000).toFixed(2) + ' km / ' + (totalDist / 1000).toFixed(2) + ' km';
 
             if (parcoursRunning && state.current_lat && state.current_lon) {
                 updatePosition(routeDistance, state.current_lat, state.current_lon, state.current_ele ?? 0);
@@ -618,10 +672,24 @@
         fetch('/api/state')
             .then(r => r.json())
             .then(state => {
-                if (state.last_realtime) updateMetrics(state.last_realtime);
+                if (!parcoursHasStarted && ((state.parcours_distance_m ?? 0) > 0 || parcoursRunning)) {
+                    parcoursHasStarted = true;
+                }
+
+                if (!parcoursHasStarted) {
+                    clearParcoursDisplay();
+                    return;
+                }
+
                 const routeDistance = state.parcours_distance_m ?? 0;
-                document.getElementById('m-dist').textContent = (parcoursRunning ? (routeDistance / 1000).toFixed(2) : '0.00');
+                if (parcoursRunning && state.last_realtime) updateMetrics(state.last_realtime);
+                document.getElementById('m-dist').textContent = (routeDistance / 1000).toFixed(2);
                 document.getElementById('m-slope').textContent = (state.slope_pct ?? 0).toFixed(1);
+                document.getElementById('dist-badge').textContent = (routeDistance / 1000).toFixed(2) + ' km / ' + (totalDist / 1000).toFixed(2) + ' km';
+
+                if (parcoursRunning && state.current_lat && state.current_lon) {
+                    updatePosition(routeDistance, state.current_lat, state.current_lon, state.current_ele ?? 0);
+                }
             })
             .catch(e => console.error('Erreur /api/state:', e));
 

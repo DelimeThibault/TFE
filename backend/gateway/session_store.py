@@ -52,10 +52,10 @@ def _build_public_state() -> dict:
             0,
             now_ns - (session_started_ns or now_ns) - paused_accumulated_ns - current_pause_ns
         )
-    elif paused_accumulated_ns > 0:
+    elif paused_at_ns:
         effective_elapsed_ns = max(
             0,
-            now_ns - (session_started_ns or now_ns) - paused_accumulated_ns - current_pause_ns
+            paused_at_ns - (session_started_ns or paused_at_ns) - paused_accumulated_ns
         )
     else:
         effective_elapsed_ns = 0
@@ -154,12 +154,12 @@ def resume_session() -> dict:
     with lock:
         if not state.get("session_running", False):
             now_ns = time_ns()
-            paused_at_ns = state.get("paused_at_ns")
-            paused_accumulated_ns = state.get("paused_accumulated_ns", 0)
-            if paused_accumulated_ns == 0:
+            if state.get("session_started_ns") is None:
                 state["session_started_ns"] = now_ns
-            elif paused_at_ns:
-                state["paused_accumulated_ns"] += max(0, now_ns - paused_at_ns)
+
+            paused_at_ns = state.get("paused_at_ns")
+            if paused_at_ns:
+                state["paused_accumulated_ns"] = (state.get("paused_accumulated_ns", 0) or 0) + max(0, now_ns - paused_at_ns)
 
             state["paused_at_ns"] = None
             state["session_running"] = True

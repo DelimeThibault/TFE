@@ -538,7 +538,7 @@
 
         <div class="metric-cell">
           <div class="metric-label">Distance parcourue</div>
-          <div class="metric-value" id="distance">0.00</div>
+          <div class="metric-value" id="distance">--</div>
           <div class="metric-unit">km</div>
         </div>
 
@@ -573,7 +573,7 @@
         <h2>Équivalences du quotidien</h2>
         <div class="energy-total-box">
           <span>Production session</span>
-          <strong id="energySessionValue">0.0 Wh</strong>
+          <strong id="energySessionValue">-- Wh</strong>
         </div>
       </div>
       <div class="equivalents-grid" id="equivalentsGrid"></div>
@@ -592,8 +592,10 @@
     ];
 
     let sessionState = 'stopped';
+    let sessionHasStarted = false;
     let isActionLoading = false;
     let currentPowerW = 0;
+    let lastSessionDurationSeconds = 0;
 
     let chronoBaseSeconds = 0;
     let chronoServerSyncMs = 0;
@@ -675,6 +677,7 @@
       chronoRunning = false;
       stopChronoTicker();
       renderChrono();
+      lastSessionDurationSeconds = 0;
     }
 
     function setSessionStateUI(state) {
@@ -789,8 +792,9 @@
         }
 
         resetChrono();
-        renderEnergyEquivalents(0, 0);
-        document.getElementById('distance').textContent = '0.00';
+        sessionHasStarted = false;
+        renderEnergyEquivalents(0, 0, false);
+        document.getElementById('distance').textContent = '--';
         setSessionStateUI('stopped');
       } catch (error) {
         console.error('Erreur reset dashboard:', error);
@@ -799,20 +803,23 @@
       }
     }
 
-    function renderEnergyEquivalents(energyWh = 0, powerW = 0) {
+    function renderEnergyEquivalents(energyWh = 0, powerW = 0, showValues = true) {
       const totalEl = document.getElementById('energySessionValue');
       const gridEl = document.getElementById('equivalentsGrid');
       if (!totalEl || !gridEl) return;
 
       const safeEnergy = Number(energyWh || 0);
       const safePower = Number(powerW || 0);
-      totalEl.textContent = formatWh(safeEnergy);
+      const displayEnergy = showValues ? safeEnergy : 0;
+      totalEl.textContent = formatWh(displayEnergy);
 
       gridEl.innerHTML = ENERGY_EQUIVALENTS.map((item) => {
-        const progress = Math.min((safeEnergy / item.targetWh) * 100, 100);
-        const done = safeEnergy >= item.targetWh;
-        const remainingWh = Math.max(item.targetWh - safeEnergy, 0);
-        const remainingMinutes = getRemainingTimeMinutes(remainingWh, safePower);
+        const progress = showValues ? Math.min((safeEnergy / item.targetWh) * 100, 100) : 0;
+        const done = showValues ? safeEnergy >= item.targetWh : false;
+        const currentWhLabel = showValues ? formatWh(Math.min(safeEnergy, item.targetWh)) : formatWh(0);
+        const remainingWh = showValues ? Math.max(item.targetWh - safeEnergy, 0) : item.targetWh;
+        const remainingMinutes = showValues ? getRemainingTimeMinutes(remainingWh, safePower) : Infinity;
+        const remainingTimeLabel = showValues ? formatMinutes(remainingMinutes) : '-- min';
 
         return `
           <article class="equivalent-card ${done ? 'done' : ''}">
@@ -825,39 +832,57 @@
               <div class="equivalent-progress-bar" style="width: ${progress}%;"></div>
             </div>
             <div class="equivalent-stats">
-              <span>${formatWh(Math.min(safeEnergy, item.targetWh))} / ${formatWh(item.targetWh)}</span>
+              <span>${currentWhLabel} / ${formatWh(item.targetWh)}</span>
               <strong>${Math.round(progress)}%</strong>
             </div>
             <div class="equivalent-status">
               ${done
                 ? 'Objectif atteint'
-                : `<span>Encore ${formatWh(remainingWh)}</span><span>~ ${formatMinutes(remainingMinutes)} au rythme actuel</span>`}
+                : `<span>~ ${remainingTimeLabel} au rythme actuel</span>`}
             </div>
           </article>`;
       }).join('');
     }
 
     function updateMetrics(data, fullState = null) {
-      const cadence = data?.cadence_rpm != null ? Math.round(data.cadence_rpm) : '--';
-      const speedDisplay = data?.speed_sim_kmh != null ? Number(data.speed_sim_kmh).toFixed(1) : '--';
-      const powerValue = data?.power_w != null ? Number(data.power_w) : 0;
-      const powerDisplay = data?.power_w != null ? Math.round(data.power_w) : '--';
-      const resistanceDisplay = data?.resistance_v != null ? Number(data.resistance_v).toFixed(2) : '--';
-      const energySessionWh = fullState?.energy_session_wh ?? fullState?.last_realtime?.energy_session_wh ?? data?.energy_session_wh ?? 0;
-      const distanceSessionM = fullState?.distance_session_m ?? data?.distance_session_m ?? 0;
+      const shouldShowValues = Boolean(
+        fullState?.session_running ||
+        (fullState?.session_duration_s ?? 0) > 0 ||
+        sessionHasStarted
+      );
+      sessionHasStarted = shouldShowValues;
+
+      const liveData = shouldShowValues ? (data || fullState?.last_realtime || {}) : null;
+      const cadence = liveData?.cadence_rpm != null ? Math.round(liveData.cadence_rpm) : '--';
+      const speedDisplay = liveData?.speed_sim_kmh != null ? Number(liveData.speed_sim_kmh).toFixed(1) : '--';
+      const powerValue = liveData?.power_w != null ? Number(liveData.power_w) : 0;
+      const powerDisplay = liveData?.power_w != null ? Math.round(liveData.power_w) : '--';
+      const resistanceDisplay = liveData?.resistance_v != null ? Number(liveData.resistance_v).toFixed(2) : '--';
+      const energySessionWh = shouldShowValues ? (fullState?.energy_session_wh ?? fullState?.last_realtime?.energy_session_wh ?? liveData?.energy_session_wh ?? 0) : 0;
+      const distanceSessionM = shouldShowValues ? (fullState?.distance_session_m ?? liveData?.distance_session_m ?? 0) : 0;
 
       document.getElementById('cadence').textContent = cadence;
       document.getElementById('speed').textContent = speedDisplay;
       document.getElementById('power').textContent = powerDisplay;
       document.getElementById('resistance').textContent = resistanceDisplay;
-      document.getElementById('distance').textContent = (Number(distanceSessionM || 0) / 1000).toFixed(2);
+      document.getElementById('distance').textContent = shouldShowValues ? (Number(distanceSessionM || 0) / 1000).toFixed(2) : '--';
 
       currentPowerW = powerValue;
-      renderEnergyEquivalents(Number(energySessionWh || 0), currentPowerW);
+      renderEnergyEquivalents(Number(energySessionWh || 0), currentPowerW, shouldShowValues);
 
       if (fullState?.session_duration_s != null) {
         const isRunning = Boolean(fullState?.session_running);
-        syncChrono(fullState.session_duration_s, isRunning);
+        const incomingSeconds = Math.max(0, Math.floor(fullState.session_duration_s || 0));
+
+        if (isRunning || incomingSeconds > 0) {
+          lastSessionDurationSeconds = incomingSeconds;
+        }
+
+        const chronoSeconds = isRunning
+          ? lastSessionDurationSeconds
+          : (incomingSeconds > 0 ? incomingSeconds : lastSessionDurationSeconds);
+
+        syncChrono(chronoSeconds, isRunning);
 
         if (fullState.session_duration_s <= 0 && isRunning) {
           setSessionStateUI('running');
@@ -942,13 +967,14 @@
     document.querySelector('[data-theme-toggle]').addEventListener('click', toggleTheme);
 
     initTheme();
-    renderEnergyEquivalents(0, 0);
+    renderEnergyEquivalents(0, 0, false);
     resetChrono();
     setSessionStateUI('stopped');
 
     fetchInitialSessionState()
       .then((state) => {
         const realtime = state?.last_realtime || {};
+        sessionHasStarted = Boolean(state?.session_running || (state?.session_duration_s ?? 0) > 0);
         updateMetrics(realtime, state);
       })
       .catch((error) => {
